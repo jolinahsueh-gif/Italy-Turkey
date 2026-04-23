@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Europe 2026 — Travel Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:#1a1714;--ink2:#2e2a26;--ink3:#3d3530;
+  --muted:#7a6f66;--muted2:#a09890;--muted3:#c8beb4;
+  --parchment:#faf7f2;--parchment2:#f2ede4;--parchment3:#e8e0d4;
+  --border:rgba(26,23,20,0.09);--border2:rgba(26,23,20,0.16);
+  --gold:#b8892a;--gold2:#d4a843;
+  --blue:#1d4ed8;--blue-bg:rgba(29,78,216,0.07);--blue-border:rgba(29,78,216,0.2);
+  --green:#16a34a;--green-bg:rgba(22,163,74,0.08);
+  --red:#dc2626;--red-bg:rgba(220,38,38,0.07);
+  --amber:#d97706;
+  --radius:8px;--radius-lg:12px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:'DM Sans',sans-serif;background:var(--parchment);color:var(--ink);font-size:15px;line-height:1.6;}
+button{font-family:inherit;cursor:pointer;}
+a{color:inherit;text-decoration:none;}
+
+/* ── SAVE TOAST ── */
+#save-toast{position:fixed;bottom:24px;right:24px;z-index:9999;background:var(--ink2);color:var(--parchment);font-size:12px;padding:8px 16px;border-radius:20px;display:flex;align-items:center;gap:8px;opacity:0;transform:translateY(8px);transition:opacity .3s,transform .3s;pointer-events:none;}
+#save-toast.show{opacity:1;transform:translateY(0);}
+#save-toast .dot{width:6px;height:6px;border-radius:50%;background:var(--green);}
+
+/* ── TOOLBAR ── */
+#toolbar{position:sticky;top:0;z-index:200;display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:9px 20px;background:rgba(250,247,242,0.96);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);}
+.tb-logo{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:400;color:var(--gold);margin-right:6px;white-space:nowrap;}
+.tb-sep{width:1px;height:18px;background:var(--border2);flex-shrink:0;}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border-radius:6px;font-size:12px;font-weight:500;border:1px solid var(--border2);background:white;color:var(--ink);transition:all .15s;white-space:nowrap;cursor:pointer;}
+.btn:hover{background:var(--parchment2);border-color:var(--muted2);}
+.btn.blue{background:var(--blue);color:white;border-color:var(--blue);}
+.btn.blue:hover{background:#1e40af;}
+.btn svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.tb-status{margin-left:auto;font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;}
+.indicator{width:7px;height:7px;border-radius:50%;}
+.indicator.saved{background:var(--green);}
+.indicator.unsaved{background:var(--amber);}
+
+/* ── DAY NAV (feature 5) ── */
+#day-nav{background:var(--ink2);border-bottom:2px solid rgba(184,137,42,.3);overflow-x:auto;scrollbar-width:none;white-space:nowrap;padding:0 8px;position:relative;z-index:150;}
+#day-nav::-webkit-scrollbar{display:none;}
+.day-nav-city{display:inline-block;position:relative;}
+.day-nav-city-btn{display:inline-flex;align-items:center;gap:7px;padding:10px 14px;border:none;background:transparent;color:var(--muted3);cursor:pointer;transition:all .15s;font-family:inherit;font-size:12px;letter-spacing:.3px;white-space:nowrap;border-right:1px solid rgba(255,255,255,.06);}
+.day-nav-city-btn:hover,.day-nav-city.open .day-nav-city-btn{color:white;background:rgba(255,255,255,.06);}
+.day-nav-city-btn .dnc-emoji{font-size:15px;}
+.day-nav-city-btn .dnc-name{font-weight:500;}
+.day-nav-city-btn .dnc-nights{font-size:9.5px;opacity:.55;}
+.day-nav-city-btn .dnc-arrow{font-size:8px;opacity:.4;transition:transform .15s;}
+.day-nav-city:hover .dnc-arrow,.day-nav-city.open .dnc-arrow{opacity:.8;transform:rotate(180deg);}
+/* dropdown */
+.day-nav-dropdown{position:absolute;top:100%;left:0;background:var(--ink2);border:1px solid rgba(255,255,255,.1);border-top:2px solid;border-radius:0 0 8px 8px;min-width:200px;padding:6px 0;box-shadow:0 8px 24px rgba(0,0,0,.4);opacity:0;pointer-events:none;transform:translateY(-4px);transition:opacity .15s,transform .15s;z-index:300;}
+.day-nav-city:hover .day-nav-dropdown{opacity:1;pointer-events:all;transform:translateY(0);}
+.day-nav-dd-item{display:flex;align-items:center;gap:10px;padding:7px 14px;cursor:pointer;transition:background .1s;white-space:nowrap;}
+.day-nav-dd-item:hover{background:rgba(255,255,255,.06);}
+.day-nav-dd-date{font-size:9.5px;color:var(--muted2);min-width:44px;flex-shrink:0;}
+.day-nav-dd-title{font-size:12px;color:rgba(250,247,242,.8);overflow:hidden;text-overflow:ellipsis;max-width:220px;}
+
+/* ── HERO ── */
+.hero{background:var(--ink2);position:relative;overflow:hidden;padding:56px 60px 52px;}
+.hero-grain{position:absolute;inset:0;opacity:.04;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:180px;pointer-events:none;}
+.hero-glow{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 65% 70% at 15% 60%,rgba(184,137,42,.14) 0%,transparent 60%),radial-gradient(ellipse 50% 60% at 85% 25%,rgba(26,92,122,.18) 0%,transparent 55%);}
+.hero-content{position:relative;z-index:1;max-width:820px;}
+.hero-eyebrow{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--gold2);margin-bottom:16px;display:flex;align-items:center;gap:12px;}
+.hero-eyebrow::before{content:'';display:block;width:36px;height:1px;background:var(--gold);}
+[data-field]{border-radius:4px;transition:outline .15s,background .15s;outline:2px solid transparent;}
+body.editing [data-field]{cursor:text;}
+body.editing [data-field]:hover{outline:2px solid rgba(29,78,216,.35);background:rgba(29,78,216,.06);}
+body.editing [data-field]:focus{outline:2px solid var(--blue);background:rgba(29,78,216,.08);}
+.hero-title{font-family:'Cormorant Garamond',serif;font-size:clamp(40px,6vw,80px);font-weight:300;line-height:.96;letter-spacing:-.5px;color:rgba(250,247,242,.95);margin-bottom:28px;display:block;}
+.hero-title em{font-style:italic;color:var(--gold2);}
+.hero-meta{display:flex;gap:24px;flex-wrap:wrap;margin-bottom:32px;}
+.hm-item{display:flex;flex-direction:column;gap:3px;}
+.hm-label{font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);}
+.hm-val{font-size:13px;color:rgba(250,247,242,.8);font-weight:300;}
+.flights-list{display:flex;flex-direction:column;gap:5px;max-width:600px;}
+.flight-card{display:flex;align-items:center;gap:10px;background:rgba(250,247,242,.055);border:1px solid rgba(250,247,242,.1);border-radius:7px;padding:7px 13px;position:relative;flex-wrap:wrap;}
+.flight-card:hover{border-color:rgba(250,247,242,.18);}
+.f-date{font-size:10.5px;color:var(--muted);min-width:48px;}
+.f-route{font-family:'Cormorant Garamond',serif;font-size:16px;color:rgba(250,247,242,.9);min-width:108px;}
+.f-divider{flex:1;height:1px;background:rgba(255,255,255,.08);min-width:20px;}
+.f-info{font-size:10px;color:var(--muted);text-align:right;line-height:1.5;white-space:pre-line;}
+.f-badge{font-size:9px;letter-spacing:.5px;text-transform:uppercase;padding:2px 7px;border-radius:3px;white-space:nowrap;background:rgba(220,38,38,.2);color:#fca5a5;border:1px solid rgba(252,165,165,.2);}
+.f-booking{display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+.attach-btn{font-size:9.5px;padding:2px 8px;border-radius:4px;border:1px dashed rgba(250,247,242,.2);background:rgba(250,247,242,.04);color:rgba(250,247,242,.4);display:none;white-space:nowrap;cursor:pointer;}
+body.editing .attach-btn{display:inline-flex;align-items:center;gap:4px;}
+body.editing .attach-btn:hover{background:rgba(250,247,242,.1);color:rgba(250,247,242,.8);}
+.booking-chip{display:inline-flex;align-items:center;gap:5px;font-size:9.5px;padding:2px 8px;border-radius:4px;background:rgba(22,163,74,.15);color:#86efac;border:1px solid rgba(134,239,172,.2);cursor:pointer;}
+.booking-chip:hover{background:rgba(22,163,74,.25);}
+
+/* ── SECTION WRAPPER ── */
+.wrap{max-width:980px;margin:0 auto;padding:56px 28px;}
+.wrap+.wrap{padding-top:0;}
+.sec-label{font-size:9.5px;letter-spacing:2.5px;text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.sec-label::before{content:'';display:block;width:28px;height:1px;background:var(--gold);}
+
+/* ── CALENDAR (feature 6) ── */
+#calendar-section{max-width:980px;margin:0 auto;padding:48px 28px 0;}
+.calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-top:16px;}
+.cal-head{text-align:center;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:6px 2px;}
+.cal-day{border-radius:6px;padding:6px 4px;min-height:68px;border:1px solid transparent;transition:all .15s;position:relative;overflow:hidden;}
+.cal-day.in-trip{background:var(--parchment2);border-color:var(--border);}
+.cal-day.in-trip:hover{border-color:var(--border2);transform:translateY(-1px);}
+.cal-day.today{border-color:var(--gold) !important;background:rgba(184,137,42,.06) !important;}
+.cal-day.empty{opacity:0;}
+.cal-date{font-size:10px;font-weight:500;color:var(--muted);margin-bottom:3px;}
+.cal-day.in-trip .cal-date{color:var(--ink);}
+.cal-event{font-size:10px;line-height:1.3;margin-top:2px;}
+.cal-emoji{font-size:14px;display:block;line-height:1.2;}
+.cal-city-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:2px;vertical-align:middle;}
+.cal-note{font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+
+/* ── MAP (features 7 & 8) ── */
+#map-section{max-width:980px;margin:0 auto;padding:48px 28px 56px;}
+#map-container{border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--border);height:500px;position:relative;background:var(--parchment2);}
+#map-iframe{width:100%;height:100%;border:none;}
+#map-city-legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+.map-legend-chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:4px 11px;border-radius:20px;background:var(--parchment2);border:1px solid var(--border);}
+.map-legend-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+
+/* ── SCROLL TO TOP FAB ── */
+#back-to-top{position:fixed;bottom:28px;left:28px;z-index:9998;display:flex;align-items:center;gap:5px;padding:9px 14px;background:var(--ink2);color:var(--parchment);border:none;border-radius:20px;font-size:12px;font-weight:500;letter-spacing:.3px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.28);opacity:0;transform:translateY(6px);transition:opacity .25s,transform .25s;pointer-events:none;font-family:inherit;}
+#back-to-top.visible{opacity:1;transform:translateY(0);pointer-events:all;}
+#back-to-top:hover{background:#1a1612;box-shadow:0 6px 20px rgba(0,0,0,.38);}
+#back-to-top svg{width:13px;height:13px;}
+
+/* ── STATUS BOARD ── */
+.sb{width:100%;border-collapse:collapse;margin-top:16px;}
+.sb th{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:400;padding:0 0 10px;text-align:left;border-bottom:1px solid var(--border2);}
+.sb td{padding:10px 0;border-bottom:1px solid var(--border);vertical-align:middle;}
+.sb tr:last-child td{border-bottom:none;}
+.sb-date{font-size:11.5px;color:var(--muted);padding-right:16px;white-space:nowrap;}
+.sb-city{font-size:13px;font-weight:500;padding-right:14px;white-space:nowrap;}
+.sb-detail{font-size:12px;color:var(--muted);}
+.sb-right{display:flex;align-items:center;gap:6px;justify-content:flex-end;flex-wrap:wrap;}
+.pip{display:inline-flex;align-items:center;gap:4px;font-size:9.5px;letter-spacing:.3px;text-transform:uppercase;font-weight:500;padding:3px 9px;border-radius:20px;white-space:nowrap;cursor:pointer;transition:opacity .15s;}
+.pip:hover{opacity:.8;}
+.pip.ok{background:rgba(22,163,74,.1);color:#15803d;}
+.pip.warn{background:rgba(217,119,6,.1);color:#92400e;}
+.pip.need{background:rgba(220,38,38,.1);color:#b91c1c;}
+.pip.info{background:rgba(29,78,216,.09);color:#1d4ed8;}
+.row-attach{display:none;}
+body.editing .row-attach{display:inline-flex;}
+.row-attach-btn{font-size:9px;padding:2px 7px;border-radius:4px;border:1px dashed var(--border2);background:transparent;color:var(--muted2);white-space:nowrap;cursor:pointer;}
+.row-attach-btn:hover{border-color:var(--blue);color:var(--blue);}
+/* sort indicator */
+.sb-sort-note{font-size:10px;color:var(--muted);margin-top:8px;font-style:italic;}
+
+/* ── CITY SECTION ── */
+.city-sec{max-width:980px;margin:0 auto;padding:32px 28px 52px;position:relative;}
+.city-hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding-bottom:20px;margin-bottom:24px;border-bottom:1px solid var(--border);}
+.city-name-wrap{flex:1;}
+.city-name{font-family:'Cormorant Garamond',serif;font-size:50px;font-weight:300;line-height:1;letter-spacing:-.5px;}
+.city-sub{font-size:12px;color:var(--muted);margin-top:5px;}
+.city-nights-num{font-family:'Cormorant Garamond',serif;font-size:50px;font-weight:300;line-height:1;text-align:right;}
+.city-nights-lbl{font-size:9.5px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);text-align:right;}
+
+/* ── DAY CARD ── */
+.day{border-bottom:1px solid var(--border);position:relative;}
+.day-hdr{display:flex;align-items:flex-start;gap:14px;padding:16px 0;cursor:pointer;user-select:none;}
+.day-hdr:hover .day-title{color:var(--city-col,var(--gold));}
+.day-n{font-family:'Cormorant Garamond',serif;font-size:12.5px;color:var(--muted);min-width:24px;padding-top:3px;text-align:right;}
+.day-meta{flex:1;min-width:0;}
+.day-date{font-size:10.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:3px;}
+.day-title{font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:400;line-height:1.2;color:var(--ink);transition:color .2s;}
+.day-where{font-size:11px;color:var(--muted2);margin-top:2px;}
+.night-badge{flex-shrink:0;font-size:10.5px;color:var(--muted);background:var(--parchment2);border:1px solid var(--border);padding:3px 10px;border-radius:20px;white-space:nowrap;margin-top:2px;}
+.chev{width:18px;height:18px;flex-shrink:0;padding-top:5px;color:var(--muted3);transition:transform .25s;}
+.chev svg{width:11px;height:7px;fill:none;stroke:currentColor;display:block;}
+.day.open .chev{transform:rotate(180deg);}
+.day-body{max-height:0;overflow:hidden;transition:max-height .35s cubic-bezier(.4,0,.2,1);}
+.day.open .day-body{max-height:5000px;}
+.day-body-in{padding:0 0 20px 38px;}
+
+/* Day hotel booking row */
+.day-book-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:5px;}
+.day-book-chip{display:inline-flex;align-items:center;gap:4px;font-size:9.5px;padding:2px 9px;border-radius:4px;background:rgba(22,163,74,.1);color:#15803d;border:1px solid rgba(22,163,74,.25);cursor:pointer;}
+.day-book-chip:hover{background:rgba(22,163,74,.18);}
+.day-book-btn{display:none;align-items:center;gap:4px;font-size:9.5px;padding:2px 9px;border-radius:4px;border:1px dashed var(--border2);background:transparent;color:var(--muted2);cursor:pointer;white-space:nowrap;transition:all .15s;}
+.day-book-btn:hover{border-color:var(--blue);color:var(--blue);}
+body.editing .day-book-btn{display:inline-flex;}
+
+/* ── SLOT ── */
+.slot{display:grid;grid-template-columns:88px 1fr;gap:12px;padding:12px 0;border-top:1px solid var(--border);position:relative;}
+.slot:first-child{border-top:none;}
+.slot-t{font-size:10.5px;color:var(--muted);padding-top:2px;}
+.slot-name{font-size:14px;font-weight:500;margin-bottom:3px;}
+.slot-note{font-size:13px;color:var(--muted);line-height:1.55;}
+.tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;align-items:center;}
+.tag{font-size:11px;padding:3px 10px;border-radius:20px;}
+
+/* Address field on slots (feature 8) */
+.slot-address{display:none;margin-top:6px;}
+body.editing .slot-address{display:flex;}
+.slot-address-inner{display:flex;align-items:center;gap:6px;flex:1;}
+.slot-address input{flex:1;padding:5px 9px;border:1px dashed var(--border2);border-radius:5px;font-size:11.5px;font-family:inherit;color:var(--ink);background:transparent;outline:none;}
+.slot-address input:focus{border-color:var(--blue);background:var(--blue-bg);}
+.slot-address input::placeholder{color:var(--muted3);}
+.slot-address-label{font-size:9.5px;color:var(--muted2);white-space:nowrap;}
+.slot-has-address{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--muted);background:var(--parchment2);border:1px solid var(--border);border-radius:4px;padding:2px 7px;margin-top:5px;}
+.slot-has-address .pin{font-size:11px;}
+
+/* Slot docs */
+.slot-docs{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+.doc-card{display:flex;align-items:center;gap:10px;background:var(--parchment2);border:1px solid var(--border);border-radius:var(--radius);padding:9px 13px;font-size:11.5px;color:var(--ink3);cursor:pointer;transition:all .15s;max-width:300px;position:relative;}
+.doc-card:hover{border-color:var(--border2);box-shadow:0 1px 4px rgba(0,0,0,.06);}
+/* doc edit overlay */
+.doc-card-edit{display:none;flex-direction:column;gap:5px;width:100%;}
+body.editing .doc-card:hover .doc-card-display{display:none;}
+body.editing .doc-card:hover .doc-card-edit{display:flex;}
+.doc-card-display{display:flex;align-items:center;gap:10px;width:100%;}
+.doc-thumb{width:44px;height:44px;border-radius:5px;object-fit:cover;border:1px solid var(--border);flex-shrink:0;background:var(--parchment3);}
+.doc-thumb-placeholder{width:44px;height:44px;border-radius:5px;background:var(--parchment3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.doc-info{min-width:0;flex:1;}
+.doc-label-text{font-weight:500;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;margin-bottom:2px;}
+.doc-meta{font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px;}
+.doc-link-pill{display:inline-flex;align-items:center;gap:3px;font-size:9.5px;color:var(--blue);background:var(--blue-bg);border:1px solid var(--blue-border);border-radius:3px;padding:1px 5px;}
+.doc-del{position:absolute;top:4px;right:4px;display:none;font-size:10px;color:var(--muted2);background:var(--parchment3);border:1px solid var(--border);border-radius:3px;padding:1px 4px;cursor:pointer;}
+.doc-del:hover{color:var(--red);}
+body.editing .doc-del{display:block;}
+/* inline doc edit fields */
+.doc-edit-input{padding:4px 8px;border:1px solid var(--border2);border-radius:4px;font-size:11px;font-family:inherit;color:var(--ink);background:white;outline:none;width:100%;}
+.doc-edit-input:focus{border-color:var(--blue);}
+.doc-edit-actions{display:flex;gap:5px;}
+.doc-edit-save{font-size:10px;padding:3px 8px;border-radius:4px;background:var(--blue);color:white;border:none;cursor:pointer;}
+.doc-edit-del{font-size:10px;padding:3px 8px;border-radius:4px;background:var(--red-bg);color:var(--red);border:1px solid rgba(220,38,38,.25);cursor:pointer;}
+
+.slot-attach-btn{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:4px 10px;border-radius:5px;margin-top:8px;border:1px dashed var(--border2);background:transparent;color:var(--muted2);transition:all .15s;cursor:pointer;}
+.slot-attach-btn:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-bg);}
+.slot-attach-btn.has-docs{display:none;}
+body.editing .slot-attach-btn{display:inline-flex !important;}
+
+/* ── EDIT MODE CONTROLS ── */
+.edit-bar{display:none;gap:6px;padding:8px 0 4px;flex-wrap:wrap;}
+body.editing .edit-bar{display:flex;}
+.sm-btn{font-size:11px;padding:4px 10px;border-radius:5px;border:1px solid var(--border2);background:white;color:var(--muted);transition:all .12s;cursor:pointer;}
+.sm-btn:hover{border-color:var(--muted2);color:var(--ink);}
+.sm-btn.danger{color:var(--red);border-color:rgba(220,38,38,.25);background:var(--red-bg);}
+.add-strip{display:none;width:100%;padding:9px;margin-top:6px;border:1px dashed var(--blue-border);border-radius:6px;background:var(--blue-bg);color:var(--blue);font-size:12px;font-weight:500;text-align:center;cursor:pointer;}
+body.editing .add-strip{display:block;}
+.city-del{display:none;position:absolute;top:32px;right:28px;font-size:11px;padding:4px 10px;border-radius:5px;border:1px solid rgba(220,38,38,.25);background:var(--red-bg);color:var(--red);cursor:pointer;}
+body.editing .city-del{display:block;}
+.day-actions,.slot-actions{display:none;position:absolute;right:0;top:14px;gap:5px;opacity:0;transition:opacity .15s;}
+.slot-actions{top:10px;}
+body.editing .day:hover .day-actions,body.editing .slot:hover .slot-actions{display:flex;opacity:1;}
+#add-city-wrap{display:none;max-width:980px;margin:0 auto 60px;padding:0 28px;}
+body.editing #add-city-wrap{display:block;}
+
+/* ── BUDGET CALCULATOR (feature 3) ── */
+#budget-section{max-width:980px;margin:0 auto;padding:48px 28px 56px;}
+.budget-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;}
+@media(max-width:640px){.budget-grid{grid-template-columns:1fr;}}
+.budget-card{background:var(--parchment2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;}
+.budget-card h4{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:400;margin-bottom:14px;color:var(--ink);}
+.budget-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.budget-row label{font-size:11.5px;color:var(--muted);flex:1;min-width:0;}
+.budget-row input{width:90px;padding:5px 9px;border:1px solid var(--border2);border-radius:5px;font-size:12px;font-family:inherit;color:var(--ink);background:white;outline:none;text-align:right;}
+.budget-row input:focus{border-color:var(--blue);}
+.budget-row .curr{font-size:10.5px;color:var(--muted);width:24px;}
+.budget-total-card{background:var(--ink2);border-radius:var(--radius-lg);padding:20px;color:var(--parchment);}
+.budget-total-card h4{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:400;color:var(--gold2);margin-bottom:14px;}
+.budget-total-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07);font-size:13px;}
+.budget-total-row:last-child{border-bottom:none;padding-top:12px;margin-top:4px;}
+.budget-total-row.grand{font-size:18px;font-weight:500;color:var(--gold2);}
+.budget-total-row .btr-label{color:var(--muted3);}
+.budget-total-row .btr-amt{font-weight:500;}
+.budget-per-day{font-size:11px;color:var(--muted2);margin-top:8px;text-align:center;}
+/* split-row: label | $ | amount | ÷ persons | share chip | del */
+.budget-split-row{display:grid;grid-template-columns:1fr 16px 80px 44px 52px 20px;gap:5px;align-items:center;margin-bottom:7px;}
+.bsr-label{font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.budget-split-row .curr{font-size:10.5px;color:var(--muted);text-align:right;}
+.bsr-amt,.bsr-persons{padding:5px 7px;border:1px solid var(--border2);border-radius:5px;font-size:12px;font-family:inherit;color:var(--ink);background:white;outline:none;text-align:right;width:100%;}
+.bsr-persons{background:var(--parchment2);color:var(--muted);font-size:11px;border-style:dashed;text-align:center;}
+.bsr-persons:focus{border-color:var(--blue);background:white;}
+.bsr-amt:focus{border-color:var(--blue);}
+.bsr-each{font-size:10px;color:var(--green);font-weight:500;text-align:right;white-space:nowrap;overflow:hidden;}
+.bsr-del{background:none;border:none;color:var(--muted3);font-size:13px;cursor:pointer;padding:0;line-height:1;text-align:center;}
+.bsr-del:hover{color:var(--red);}
+.btr-share{display:block;font-size:10px;color:var(--gold2);margin-top:1px;}
+.budget-bar-wrap{margin-top:14px;}
+.budget-bar{height:8px;border-radius:4px;background:rgba(255,255,255,.1);overflow:hidden;margin-bottom:4px;}
+.budget-bar-fill{height:100%;border-radius:4px;transition:width .5s;}
+.budget-bar-label{display:flex;justify-content:space-between;font-size:10px;color:var(--muted2);}
+
+/* ── MODALS ── */
+.modal-overlay{display:none;position:fixed;inset:0;z-index:500;background:rgba(26,23,20,.55);backdrop-filter:blur(5px);align-items:center;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--parchment);border-radius:var(--radius-lg);padding:28px;width:480px;max-width:94vw;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.25);}
+.modal h3{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;margin-bottom:6px;}
+.modal .modal-sub{font-size:12px;color:var(--muted);margin-bottom:18px;}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+.field input,.field select,.field textarea{width:100%;padding:9px 11px;border:1px solid var(--border2);border-radius:6px;font-size:13px;font-family:inherit;color:var(--ink);background:white;outline:none;transition:border-color .15s;}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--blue);}
+.modal-btns{display:flex;gap:8px;margin-top:20px;justify-content:flex-end;}
+.modal-btns button{padding:8px 16px;border-radius:6px;font-size:13px;font-weight:500;border:1px solid;cursor:pointer;}
+.doc-queue{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;}
+.dq-item{display:grid;grid-template-columns:52px 1fr auto;gap:10px;align-items:start;background:var(--parchment2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;}
+.dq-thumb{width:52px;height:52px;border-radius:5px;background:var(--parchment3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;overflow:hidden;}
+.dq-thumb img{width:100%;height:100%;object-fit:cover;}
+.dq-fields{display:flex;flex-direction:column;gap:6px;min-width:0;}
+.dq-fields input{width:100%;padding:6px 9px;border:1px solid var(--border2);border-radius:5px;font-size:12px;font-family:inherit;color:var(--ink);background:white;outline:none;}
+.dq-fields input:focus{border-color:var(--blue);}
+.dq-del{background:none;border:none;color:var(--muted2);font-size:16px;padding:2px 4px;cursor:pointer;align-self:center;}
+.dq-del:hover{color:var(--red);}
+.drop-zone{border:2px dashed var(--border2);border-radius:8px;padding:20px;text-align:center;font-size:13px;color:var(--muted);cursor:pointer;transition:all .15s;position:relative;min-height:80px;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.drop-zone:hover,.drop-zone.dragover{border-color:var(--blue);background:var(--blue-bg);color:var(--blue);}
+.drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.dz-icon{font-size:24px;margin-bottom:6px;}
+.dz-label{font-weight:500;}
+.dz-sub{font-size:11px;margin-top:3px;}
+.drop-zone.compact{padding:12px;min-height:54px;}
+.drop-zone.compact .dz-sub{display:none;}
+.dq-add-link-btn{width:100%;padding:8px;border:1px dashed var(--border2);border-radius:6px;background:transparent;color:var(--muted);font-size:12px;font-weight:500;cursor:pointer;text-align:center;transition:all .15s;font-family:inherit;margin-top:8px;}
+.dq-add-link-btn:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-bg);}
+#doc-preview-img{max-width:100%;max-height:60vh;border-radius:8px;border:1px solid var(--border);margin-bottom:16px;}
+#doc-preview-link{display:none;align-items:center;gap:8px;font-size:13px;color:var(--blue);padding:10px 18px;border:1px solid var(--blue-border);border-radius:8px;background:var(--blue-bg);margin-bottom:16px;width:100%;justify-content:center;}
+
+/* ── FOOTER ── */
+footer{text-align:center;padding:30px 28px 50px;border-top:1px solid var(--border);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);}
+.fade-in{opacity:0;transform:translateY(10px);transition:opacity .4s,transform .4s;}
+.fade-in.visible{opacity:1;transform:none;}
+@media(max-width:640px){
+  .hero{padding:44px 18px 44px;}
+  .hero-title{font-size:40px;}
+  .city-sec,.wrap{padding:28px 16px 48px;}
+  .city-name,.city-nights-num{font-size:38px;}
+  .slot{grid-template-columns:68px 1fr;}
+  .day-body-in{padding-left:10px;}
+  .sb-detail{display:none;}
+  #calendar-section,#map-section,#budget-section{padding-left:16px;padding-right:16px;}
+  .calendar-grid{gap:2px;}
+  .cal-day{min-height:52px;padding:4px 2px;}
+}
+</style>
+</head>
+<body>
+
+<div id="save-toast"><span class="dot"></span> Saved to browser</div>
+
+<!-- TOOLBAR -->
+<div id="toolbar">
+  <span class="tb-logo">✈ Europe 2026</span>
+  <div class="tb-sep"></div>
+  <button class="btn" id="edit-btn" onclick="toggleEdit()">
+    <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit
+  </button>
+  <button class="btn" onclick="exportHTML()">
+    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Export HTML
+  </button>
+  <button class="btn" onclick="resetAll()" style="color:var(--muted)">
+    <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>Reset
+  </button>
+  <div class="tb-sep"></div>
+  <div class="tb-status">
+    <span class="indicator saved" id="save-dot"></span>
+    <span id="save-label">All saved</span>
+  </div>
+</div>
+
+<!-- DAY NAV (feature 5) -->
+<div id="day-nav"></div>
+
+<!-- HERO -->
+<section class="hero" id="hero">
+  <div class="hero-grain"></div>
+  <div class="hero-glow"></div>
+  <div class="hero-content">
+    <div class="hero-eyebrow"><span data-field="eyebrow">Aug 20 – Sep 7, 2026 · 18 days</span></div>
+    <div class="hero-title" data-field="title">London · Matera<br>Rome · Sicily<br><em>Istanbul</em></div>
+    <div class="hero-meta">
+      <div class="hm-item"><span class="hm-label">Departs</span><span class="hm-val" data-field="departs">Aug 20 · EWR</span></div>
+      <div class="hm-item"><span class="hm-label">Returns</span><span class="hm-val" data-field="returns">Sep 7 · EWR</span></div>
+      <div class="hm-item"><span class="hm-label">Nights</span><span class="hm-val" data-field="nights">18</span></div>
+      <div class="hm-item"><span class="hm-label">Countries</span><span class="hm-val" data-field="countries">4</span></div>
+    </div>
+    <div class="flights-list" id="flights-list"></div>
+    <div class="edit-bar" style="margin-top:10px">
+      <button class="sm-btn" onclick="addFlight()" style="color:rgba(250,247,242,.6);border-color:rgba(250,247,242,.15);background:rgba(250,247,242,.05)">+ Add flight</button>
+    </div>
+  </div>
+</section>
+
+<!-- CALENDAR OVERVIEW (feature 6) -->
+<div id="calendar-section">
+  <div class="sec-label">Trip calendar — Aug / Sep 2026</div>
+  <div class="calendar-grid" id="calendar-grid"></div>
+</div>
+
+<!-- STATUS BOARD -->
+<div class="wrap" id="overview">
+  <div class="sec-label">Full trip at a glance <span style="font-size:9px;color:var(--muted);letter-spacing:0;text-transform:none;font-weight:400;margin-left:6px">— sorted by date · hotels auto-linked to days</span></div>
+  <table class="sb" id="sb-table">
+    <thead><tr><th>Dates</th><th>City / Leg</th><th>Details</th><th style="text-align:right">Status</th></tr></thead>
+    <tbody id="sb-body"></tbody>
+  </table>
+  <div class="edit-bar"><button class="sm-btn" onclick="addSbRow()">+ Add row</button></div>
+</div>
+
+<!-- CITY SECTIONS -->
+<div id="cities"></div>
+<div id="add-city-wrap"><button class="add-strip" onclick="addCity()">+ Add destination</button></div>
+
+<!-- BUDGET CALCULATOR (feature 3) -->
+<div id="budget-section">
+  <div class="sec-label" style="justify-content:space-between;align-items:center">
+    <span>Budget calculator</span>
+    <span style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);letter-spacing:0;text-transform:none">
+      Splitting with
+      <input type="number" id="b-persons" value="1" min="1" max="20" oninput="recalcBudget()" style="width:44px;padding:4px 7px;border:1px solid var(--border2);border-radius:5px;font-size:12px;font-family:inherit;text-align:center;outline:none;background:white;">
+      person(s) — your share shown in summary
+    </span>
+  </div>
+  <div class="budget-grid">
+    <!-- Accommodation (auto-populated + manual rows) -->
+    <div class="budget-card">
+      <h4>Accommodation</h4>
+      <div id="budget-accom-rows"></div>
+      <button onclick="addBudgetRow('accom')" style="width:100%;margin-top:8px;padding:6px;border:1px dashed var(--blue-border);border-radius:5px;background:var(--blue-bg);color:var(--blue);font-size:11.5px;font-family:inherit;cursor:pointer;">+ Add item</button>
+      <div class="budget-row" style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+        <label style="font-weight:500;color:var(--ink)">Subtotal</label>
+        <span class="curr">$</span>
+        <input type="number" id="b-accom-total" readonly style="font-weight:600;background:var(--parchment2);">
+      </div>
+    </div>
+    <!-- Transport -->
+    <div class="budget-card">
+      <h4>Flights &amp; Transport</h4>
+      <div id="budget-transport-rows">
+        <div class="budget-split-row" data-cat="transport"><label class="bsr-label">Flights (all)</label><span class="curr">$</span><input type="number" class="bsr-amt" value="0" oninput="recalcBudget()"><input type="number" class="bsr-persons" value="1" min="1" title="÷ persons" oninput="recalcBudget()"><span class="bsr-each" title="your share"></span><button class="bsr-del" onclick="delBudgetRow(this)">✕</button></div>
+        <div class="budget-split-row" data-cat="transport"><label class="bsr-label">Car rental (Sicily)</label><span class="curr">$</span><input type="number" class="bsr-amt" value="0" oninput="recalcBudget()"><input type="number" class="bsr-persons" value="1" min="1" title="÷ persons" oninput="recalcBudget()"><span class="bsr-each" title="your share"></span><button class="bsr-del" onclick="delBudgetRow(this)">✕</button></div>
+        <div class="budget-split-row" data-cat="transport"><label class="bsr-label">Trains / buses</label><span class="curr">$</span><input type="number" class="bsr-amt" value="0" oninput="recalcBudget()"><input type="number" class="bsr-persons" value="1" min="1" title="÷ persons" oninput="recalcBudget()"><span class="bsr-each" title="your share"></span><button class="bsr-del" onclick="delBudgetRow(this)">✕</button></div>
+        <div class="budget-split-row" data-cat="transport"><label class="bsr-label">Local transport</label><span class="curr">$</span><input type="number" class="bsr-amt" value="0" oninput="recalcBudget()"><input type="number" class="bsr-persons" value="1" min="1" title="÷ persons" oninput="recalcBudget()"><span class="bsr-each" title="your share"></span><button class="bsr-del" onclick="delBudgetRow(this)">✕</button></div>
+      </div>
+      <button onclick="addBudgetRow('transport')" style="width:100%;margin-top:8px;padding:6px;border:1px dashed var(--blue-border);border-radius:5px;background:var(--blue-bg);color:var(--blue);font-size:11.5px;font-family:inherit;cursor:pointer;">+ Add item</button>
+    </div>
+    <!-- Activities -->
+    <div class="budget-card">
+      <h4>Activities &amp; Food</h4>
+      <div id="budget-activities-rows">
+        <div class="budget-split-row" data-cat="activities"><label class="bsr-label">Museum / tickets</label><span class="curr">$</span><input type="number" class="bsr-amt" value="0" oninput="recalcBudget()"><input type="number" class="bsr-persons" value="1" min="1" title="÷ persons" oninput="recalcBudget()"><span class="bsr-each"></span><button class="bsr-del" onclick="delBudgetRow(this)">✕</button></div>
+        <div class="budget-split-row" data-cat="activities"><label class="bsr-label">Dining (daily avg × days)</label><span class="curr">$</span><input type="number" class="bsr-amt" value="0" oninput="recalcBudget()"><input type="number" class="bsr-persons" value="1" min="1" title="÷ persons" oninput="recalcBudget()"><span class="bsr-each"></span><button class="bsr-del" onclick="delBudgetRow(this)">✕</button></div>
+        <div class="budget-split-row" data-cat="activities"><label class="bsr-label">Entertainment</label><span class="curr">$</span><input type="number" class="bsr-amt" value="0" oninput="recalcBudget()"><input type="number" class="bsr-persons" value="1" min="1" title="÷ persons" oninput="recalcBudget()"><span class="bsr-each"></span><button class="bsr-del" onclick="delBudgetRow(this)">✕</button></div>
+        <div class="budget-split-row" data-cat="activities"><label class="bsr-label">Shopping</label><span class="curr">$</span><input type="number" class="bsr-amt" value="0" oninput="recalcBudget()"><input type="number" class="bsr-persons" value="1" min="1" title="÷ persons" oninput="recalcBudget()"><span class="bsr-each"></span><button class="bsr-del" onclick="delBudgetRow(this)">✕</button></div>
+      </div>
+      <button onclick="addBudgetRow('activities')" style="width:100%;margin-top:8px;padding:6px;border:1px dashed var(--blue-border);border-radius:5px;background:var(--blue-bg);color:var(--blue);font-size:11.5px;font-family:inherit;cursor:pointer;">+ Add item</button>
+    </div>
+    <!-- Summary -->
+    <div class="budget-total-card">
+      <h4>Summary</h4>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(250,247,242,.4);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.07)">
+        <span>Total paid upfront</span><span>→ Your share</span>
+      </div>
+      <div class="budget-total-row"><span class="btr-label">Accommodation</span><div style="text-align:right"><span class="btr-amt" id="bs-accom">$0</span><span class="btr-share" id="bsh-accom"></span></div></div>
+      <div class="budget-total-row"><span class="btr-label">Flights &amp; transport</span><div style="text-align:right"><span class="btr-amt" id="bs-transport">$0</span><span class="btr-share" id="bsh-transport"></span></div></div>
+      <div class="budget-total-row"><span class="btr-label">Activities &amp; food</span><div style="text-align:right"><span class="btr-amt" id="bs-activities">$0</span><span class="btr-share" id="bsh-activities"></span></div></div>
+      <div class="budget-total-row"><span class="btr-label">Misc / buffer (10%)</span><div style="text-align:right"><span class="btr-amt" id="bs-misc">$0</span><span class="btr-share" id="bsh-misc"></span></div></div>
+      <div class="budget-total-row grand"><span class="btr-label">Total upfront</span><span class="btr-amt" id="bs-total">$0</span></div>
+      <div class="budget-total-row" style="background:rgba(184,137,42,.12);border-radius:6px;padding:8px 10px;margin-top:6px;border-bottom:none">
+        <span class="btr-label" style="color:var(--gold2);font-weight:500">Your share</span>
+        <span class="btr-amt" id="bs-myshare" style="color:var(--gold2);font-size:18px">$0</span>
+      </div>
+      <p class="budget-per-day" id="bs-perday">— per day average</p>
+      <div class="budget-bar-wrap">
+        <div class="budget-bar"><div class="budget-bar-fill" id="bb-accom" style="background:#2e6644;width:0%"></div></div>
+        <div class="budget-bar-label"><span>Accom</span><span id="bbl-accom">0%</span></div>
+        <div class="budget-bar" style="margin-top:4px"><div class="budget-bar-fill" id="bb-trans" style="background:#1a5c7a;width:0%"></div></div>
+        <div class="budget-bar-label"><span>Transport</span><span id="bbl-trans">0%</span></div>
+        <div class="budget-bar" style="margin-top:4px"><div class="budget-bar-fill" id="bb-act" style="background:#b86b1a;width:0%"></div></div>
+        <div class="budget-bar-label"><span>Activities &amp; Food</span><span id="bbl-act">0%</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ROUTE MAP — bottom of page -->
+<div id="map-section">
+  <div class="sec-label" style="justify-content:space-between;align-items:center">
+    <span>Route map</span>
+    <span style="font-size:10px;color:var(--muted);font-style:italic;letter-spacing:0;text-transform:none;font-weight:400">Updates live as you edit addresses on each stop below.</span>
+  </div>
+  <div id="map-container">
+    <iframe id="map-iframe" src="" title="Trip route map"></iframe>
+  </div>
+  <div id="map-city-legend"></div>
+</div>
+
+<footer><span data-field="footer">London · Matera · Rome · Sicily · Istanbul · Aug 20 – Sep 7, 2026</span></footer>
+
+<!-- SCROLL TO TOP FAB -->
+<button id="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Back to top">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+  <span>Top</span>
+</button>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="doc-modal">
+  <div class="modal">
+    <h3 id="doc-modal-title">Add bookings</h3>
+    <p class="modal-sub">Drop files, paste links, or add text — as many as you need.</p>
+    <div class="doc-queue" id="doc-queue"></div>
+    <div class="drop-zone" id="doc-dz">
+      <input type="file" id="doc-file-in" accept="image/*" multiple onchange="handleFileInput(this)">
+      <div class="dz-icon">📎</div>
+      <div class="dz-label">Drop images / QR codes here, or click to browse</div>
+      <div class="dz-sub">Select multiple files at once — each gets its own card</div>
+    </div>
+    <button class="dq-add-link-btn" onclick="addBlankItem()">+ Add a link or note (no image)</button>
+    <div class="modal-btns">
+      <button onclick="closeDocModal()" style="background:white;color:var(--muted);border-color:var(--border2)">Cancel</button>
+      <button onclick="saveDoc()" class="btn blue" id="doc-save-btn" style="padding:8px 18px">Save</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="doc-preview-modal">
+  <div class="modal" style="text-align:center;max-width:580px">
+    <h3 id="dv-title" style="margin-bottom:16px;text-align:left"></h3>
+    <img id="doc-preview-img" style="display:none">
+    <a id="doc-preview-link" target="_blank" rel="noopener">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg>
+      Open booking link in new tab
+    </a>
+    <div style="text-align:right;margin-top:16px"><button onclick="closeDocViewer()" class="btn">Close</button></div>
+  </div>
+</div>
+<div class="modal-overlay" id="tag-modal">
+  <div class="modal" style="max-width:360px">
+    <h3>Edit tag</h3>
+    <div class="field"><label>Text</label><input type="text" id="tm-text"></div>
+    <div class="field">
+      <label>Type</label>
+      <select id="tm-type">
+        <option value="tip">💡 Tip</option>
+        <option value="food">🍽 Food / restaurant</option>
+        <option value="flight">✈ Flight / transport</option>
+        <option value="warn">⚠ Warning</option>
+        <option value="drive">🚗 Drive</option>
+        <option value="vibe">✨ Vibe</option>
+      </select>
+    </div>
+    <div class="modal-btns">
+      <button onclick="deleteTag()" style="background:var(--red-bg);color:var(--red);border-color:rgba(220,38,38,.25)">Delete</button>
+      <button onclick="closeTagModal()" style="background:white;color:var(--muted);border-color:var(--border2)">Cancel</button>
+      <button onclick="saveTag()" class="btn blue" style="padding:8px 16px">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+const SK='eu2026_v5';
+
+const TS={
+  tip:{bg:'rgba(29,78,216,.08)',c:'#1d4ed8',b:'rgba(29,78,216,.2)'},
+  food:{bg:'rgba(180,107,26,.09)',c:'#92400e',b:'rgba(180,107,26,.2)'},
+  flight:{bg:'rgba(22,163,74,.08)',c:'#15803d',b:'rgba(22,163,74,.2)'},
+  warn:{bg:'rgba(220,38,38,.08)',c:'#b91c1c',b:'rgba(220,38,38,.2)'},
+  drive:{bg:'rgba(120,79,46,.08)',c:'#7c2d12',b:'rgba(120,79,46,.2)'},
+  vibe:{bg:'rgba(184,137,42,.09)',c:'#92400e',b:'rgba(184,137,42,.2)'},
+};
+function tagStyle(t){const s=TS[t]||TS.tip;return `background:${s.bg};color:${s.c};border:1px solid ${s.b}`;}
+
+const PILL_MAP={ok:{cls:'ok',lbl:'✓ Booked'},warn:{cls:'warn',lbl:'⚠ Check'},need:{cls:'need',lbl:'Book needed'},info:{cls:'info',lbl:'Action needed'}};
+const CITY_COLORS=['#2e6644','#9c2f2f','#1a5c7a','#7a4f2e','#b86b1a','#7c3aed','#0891b2','#be185d'];
+
+// City emoji mapping for calendar / nav
+const CITY_EMOJI={'london':'🇬🇧','matera':'🏔️','rome':'🏛️','roma':'🏛️','sicily':'🌊','sicilia':'🌊','istanbul':'🕌','istanbul':'🕌'};
+function cityEmoji(name){const k=name.toLowerCase();for(const [key,val] of Object.entries(CITY_EMOJI)){if(k.includes(key))return val;}return '📍';}
+
+// Date parsing helpers
+function parseDate(str){
+  if(!str)return null;
+  // "Friday, Aug 22" or "Aug 22" or "Thursday, Aug 27"
+  const months={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+  const m=str.match(/(\w+)\s+(\d+)/i);
+  if(!m)return null;
+  const mon=months[m[1].toLowerCase().slice(0,3)];
+  if(mon===undefined)return null;
+  return new Date(2026,mon,parseInt(m[2]));
+}
+function formatDateKey(d){return d?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`:null;}
+function parseDateKey(s){if(!s)return null;const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);}
+
+const DEFAULT={"hero":{"eyebrow":"Aug 22 – Sep 7, 2026 · 16 nights","title":"London · Matera<br>Rome · Sicily<br><em>Istanbul</em>","departs":"Aug 22 · EWR","returns":"Sep 7 · EWR","nights":"16","countries":"4","footer":"London · Matera · Rome · Sicily · Istanbul · Aug 22 – Sep 7, 2026"},"flights":[{"id":"f1","date":"Aug 20","route":"EWR → LHR","info":"United/Lufthansa · 7h10m\n7:05 PM → 7:15 AM+1","badge":"","docs":[]},{"id":"f2","date":"Aug 25","route":"LGW → BRI","info":"easyJet · 2h55m\n7:05 AM → 11:00 AM","badge":"Gatwick ⚠","docs":[]},{"id":"f3","date":"Aug 30","route":"FCO → CTA","info":"ITA Airways · 1h20m\n10:40 AM → 12:00 PM","badge":"","docs":[]},{"id":"f4","date":"Sep 4","route":"PMO → IST","info":"Turkish Airlines · 2h35m\n9:25 AM → 1:00 PM","badge":"Tight!","docs":[]},{"id":"f5","date":"Sep 7","route":"IST → EWR","info":"Turkish Airlines · 10h40m\n6:40 PM → 10:20 PM","badge":"","docs":[]}],"sbRows":[{"id":"s1","date":"Aug 20–25","city":"🇬🇧 London","detail":"5 nights · concerts, museums, South Bank","status":"ok","docs":[{"id":"_vkr82l1","label":"Club Quarters Hotel London City","link":"https://secure.booking.com/mytrips.html?trip_id=30969725322433","image":null}]},{"id":"s2","date":"Aug 25","city":"✈ LGW → BRI","detail":"easyJet 7:05 AM · leave hotel 4:30 AM","status":"need","docs":[]},{"id":"s3","date":"Aug 25–27","city":"🇮🇹 Matera","detail":"2 nights · UNESCO cave city · Sassi","status":"need","docs":[]},{"id":"s4","date":"Aug 27","city":"🚆 Matera → Rome","detail":"Train ~10 AM · Frecciarossa · 3h45m","status":"need","docs":[]},{"id":"s5","date":"Aug 27–30","city":"🇮🇹 Rome","detail":"3 nights · Hotel Manfredi ✓","status":"ok","docs":[{"id":"_6b6rfgf","label":"Airbnb $721.75","link":"https://www.airbnb.com/trips/v1/reservation-details/ro/RESERVATION2_CHECKIN/HM9JBCW5EQ","image":null}]},{"id":"s6","date":"Aug 30","city":"✈ FCO → CTA","detail":"ITA · 10:40 AM → drive Taormina 1h","status":"need","docs":[]},{"id":"s7","date":"Aug 30–Sep 1","city":"🇮🇹 Taormina","detail":"2 nights · Isola Bella · Blue Cave · Greek Theatre","status":"need","docs":[{"id":"_rh8lppv","label":"Taormina Airbnb $323.25","link":"https://www.airbnb.com/trips/v1/reservation-details/ro/RESERVATION2_CHECKIN/HMJNHWWWWD","image":null}]},{"id":"s8","date":"Sep 1–3","city":"🇮🇹 Cefalù + Alcamo","detail":"Cefalù–Maria ✓ · Alcamo–Rosa Maria ✓","status":"ok","docs":[{"id":"_lpqvm6o","label":"Alcamo Airbnb $223.13","link":"https://www.airbnb.com/trips/v1/reservation-details/ro/RESERVATION2_CHECKIN/HMT3XFDJKF","image":null}]},{"id":"s9","date":"Sep 4","city":"✈ PMO → IST","detail":"Turkish 9:25 AM · leave Alcamo 6:30 AM","status":"need","docs":[]},{"id":"s10","date":"Sep 4–7","city":"🇹🇷 Istanbul","detail":"3 nights · James's place Beyoğlu ✓","status":"ok","docs":[{"id":"_p6gb8l3","label":"Airbnb $424.47","link":"https://www.airbnb.com/trips/v1/reservation-details/ro/RESERVATION2_CHECKIN/HMDZTSCRSS","image":null}]},{"id":"s11","date":"Sep 7","city":"✈ IST → EWR","detail":"Turkish 6:40 PM","status":"need","docs":[]},{"id":"_xmmuhhj","date":"Aug 21-22","city":"✈ EWR→ LGW","detail":"Departure 8:50PM","status":"ok","docs":[]}],"cities":[{"id":"london","name":"London","sub":"United Kingdom · Aug 22–25 · 3 nights · Fly LGW Aug 25","nights":3,"colorIdx":0,"days":[{"id":"d2","date":"Saturday, Aug 22","title":"TBD","where":"Central London","night":"London","docs":[{"id":"_0brrkzc","label":"Club Quarters Hotel London City","link":"https://secure.booking.com/mytrips.html?trip_id=30969725322433","image":null}],"slots":[{"id":"sl5","time":"Morning","name":"Arriving in London at 7:20AM","note":"~1.5h customs + ~1h drive to the city","address":"London Heathrow Airport, TW6, UK","tags":[{"type":"tip","text":"State Rooms: rct.uk — pre-book timed entry"}],"docs":[]},{"id":"sl6","time":"Afternoon","name":"🎨 TBD","note":"TBD","address":"","tags":[],"docs":[]},{"id":"sl7","time":"Evening","name":"🏛️ TBD","note":"TBD","address":"","tags":[{"type":"tip","text":"Free entry · closed Sun–Mon"}],"docs":[]}]},{"id":"d3","date":"Sunday, Aug 23","title":"Seven Sisters day trip","where":"East Sussex coast","night":"London","docs":[{"id":"_p8axhqg","label":"Club Quarters Hotel London City","link":"https://secure.booking.com/mytrips.html?trip_id=30969725322433","image":null}],"slots":[{"id":"sl8","time":"8:30 AM","name":"Train Victoria → Seaford","note":"1h20m direct. Walk east along the chalk cliffs.","address":"London Victoria Station, London, UK","tags":[{"type":"tip","text":"~£18 return · Southern Rail from Victoria"}],"docs":[]},{"id":"sl9","time":"11:00 AM","name":"Seven Sisters clifftop walk","note":"White chalk cliffs, English Channel views. ~11 miles to Eastbourne.","address":"Seven Sisters Country Park, Seaford, BN25, UK","tags":[],"docs":[]}]},{"id":"d4","date":"Monday, Aug 24","title":"🏺 London Walk ★ Ariana Grande – The O2","where":"Bloomsbury + North Greenwich","night":"London","docs":[{"id":"_132tfm9","label":"Club Quarters London City Hotel","link":"https://secure.booking.com/mytrips.html?trip_id=30969725322433","image":null}],"slots":[{"id":"sl10","time":"10:00 AM","name":"British Museum","note":"Free. Rosetta Stone, Elgin Marbles, Sutton Hoo helmet.","address":"Great Russell St, London WC1B 3DG, UK","tags":[],"docs":[]},{"id":"sl11","time":"6:30 PM","name":"★ Ariana Grande — Eternal Sunshine Tour","note":"Doors 6:30 PM · The O2 Arena · Jubilee line to North Greenwich.","address":"The O2, Peninsula Square, London SE10 0DX, UK","tags":[{"type":"warn","text":"Pack tonight — leaving 4:30 AM tomorrow for Gatwick"}],"docs":[]}]},{"id":"d5","date":"Tuesday, Aug 25","title":"⚠ Early departure — fly LGW → Bari → drive Matera","where":"London → Gatwick → Bari → Matera","night":"Matera","docs":[],"slots":[{"id":"sl12","time":"4:00 AM","name":"⚠ Wake up · leave hotel 4:30 AM","note":"Taxi to Gatwick Southern terminal — 45–60 min from central London.","address":"","tags":[{"type":"warn","text":"⚠ LGW departs 7:05 AM · arrive airport by 5:30 AM"}],"docs":[]},{"id":"sl13","time":"7:05 AM","name":"Fly LGW → BRI · easyJet","note":"2h55m. Arrive Bari ~11:00 AM.","address":"London Gatwick Airport, Horley, UK","tags":[{"type":"flight","text":"easyJet · 2h55m · LGW → BRI"}],"docs":[]},{"id":"sl14","time":"11:30 AM","name":"Take a bus (~2h)","note":"Bus from Bari airport to Matera — ~2 hours.","address":"Bari Karol Wojtyla Airport, Bari, Italy","tags":[{"type":"drive","text":"BRI → Matera: ~2h by bus"}],"docs":[]},{"id":"sl15","time":"1:00 PM","name":"Arrive Matera — first Sassi views","note":"Check in. Walk to the viewpoint immediately.","address":"Matera, Basilicata, Italy","tags":[],"docs":[]}]}]},{"id":"matera","name":"Matera","sub":"Basilicata · Aug 25–27 · 2 nights · Train to Rome Aug 27","nights":2,"colorIdx":3,"days":[{"id":"d6","date":"Wednesday, Aug 26","title":"Matera — cave churches · Murgia plateau","where":"Matera","night":"Matera","docs":[],"slots":[{"id":"sl16","time":"Morning","name":"Palombaro Lungo cistern","note":"15,000 sqm underground cistern beneath Piazza Vittorio Veneto.","address":"Piazza Vittorio Veneto, Matera, Italy","tags":[{"type":"tip","text":"Book at ticket office · allow 45 min"}],"docs":[]},{"id":"sl17","time":"10:00 AM","name":"Rock churches of the Sassi","note":"150+ rupestrian churches with Byzantine frescoes, 8th–13th centuries.","address":"Sasso Caveoso, Matera, Italy","tags":[],"docs":[]},{"id":"sl18","time":"12:30 PM","name":"Murgia Plateau — cross the ravine","note":"Suspension bridge over the Gravina. View back to Matera from the plateau.","address":"Murgia Timone, Matera, Italy","tags":[],"docs":[]}]},{"id":"d7","date":"Thursday, Aug 27","title":"Morning Matera · train to Rome","where":"Matera → Bari → Roma Termini","night":"Rome","docs":[],"slots":[{"id":"sl19","time":"Morning","name":"Last espresso + check out","note":"Drive to Bari Centrale ~1h15m.","address":"Matera, Italy","tags":[],"docs":[]},{"id":"sl20","time":"~10 AM","name":"🚆 Train: Bari → Roma Termini","note":"Frecciarossa direct — 3h45m. Book at trenitalia.com.","address":"Bari Centrale Station, Bari, Italy","tags":[{"type":"tip","text":"trenitalia.com · Frecciarossa · ~3h45m · ~€40–70"}],"docs":[]},{"id":"sl21","time":"Early PM","name":"Arrive Rome · Hotel Manfredi","note":"Via Ludovisi 15. Walking distance to Villa Borghese.","address":"Via Ludovisi 15, Rome, Italy","tags":[{"type":"tip","text":"Hotel Manfredi di Via Veneto — ✓ Booked"}],"docs":[]},{"id":"sl22","time":"Evening","name":"Trastevere — first Roman dinner","note":"Cross the Tiber. Cacio e pepe, supplì, carciofi.","address":"Trastevere, Rome, Italy","tags":[{"type":"food","text":"Da Enzo al 29 — book ahead"}],"docs":[]}]}]},{"id":"rome","name":"Roma","sub":"Italy · Aug 27–30 · 3 nights · Hotel Manfredi ✓","nights":3,"colorIdx":1,"days":[{"id":"d8","date":"Friday, Aug 28","title":"Colosseum · Forum · Pantheon · Piazza Navona","where":"Ancient Rome","night":"Rome","docs":[],"slots":[{"id":"sl23","time":"7:30 AM","name":"Colosseum — early entry","note":"Pre-booked. Underground tour.","address":"Piazza del Colosseo 1, Rome, Italy","tags":[{"type":"tip","text":"coopculture.it — sells out days ahead"}],"docs":[]},{"id":"sl24","time":"10:00 AM","name":"Roman Forum & Palatine Hill","note":"Included with Colosseum ticket.","address":"Via Sacra, Rome, Italy","tags":[],"docs":[]},{"id":"sl25","time":"4:00 PM","name":"Pantheon & Piazza Navona","note":"€5 timed reservation for Pantheon.","address":"Piazza della Rotonda, Rome, Italy","tags":[{"type":"tip","text":"pantheonroma.com — €5 reservation"}],"docs":[]},{"id":"sl26","time":"Evening","name":"Roscioli dinner","note":"Reserve 2+ weeks ahead.","address":"Via dei Giubbonari 21, Rome, Italy","tags":[{"type":"food","text":"Roscioli — the carbonara is definitive"}],"docs":[]}]},{"id":"d9","date":"Saturday, Aug 29","title":"Vatican · St Peter's · Castel Sant'Angelo","where":"Vatican City","night":"Rome","docs":[],"slots":[{"id":"sl27","time":"7:30 AM","name":"Vatican Museums — early access","note":"Sistine Chapel in near-silence.","address":"Viale Vaticano, Vatican City","tags":[{"type":"tip","text":"Book at museivaticani.va — weeks ahead"}],"docs":[]},{"id":"sl28","time":"10:30 AM","name":"St Peter's dome climb","note":"551 steps. €8 for the dome.","address":"St. Peter's Square, Vatican City","tags":[],"docs":[]},{"id":"sl29","time":"3:30 PM","name":"Trevi Fountain & Spanish Steps","note":"5 min walk from Hotel Manfredi.","address":"Piazza di Trevi, Rome, Italy","tags":[],"docs":[]}]},{"id":"d10","date":"Sunday, Aug 30","title":"Morning Rome · fly FCO → Catania → drive Taormina","where":"Rome → FCO → CTA → Taormina","night":"Taormina","docs":[],"slots":[{"id":"sl30","time":"8:00 AM","name":"⚠ Head to FCO","note":"Leonardo Express from Termini: 30 min, €14. ITA flight 10:40 AM.","address":"Roma Termini, Rome, Italy","tags":[{"type":"warn","text":"⚠ Catch 8:00–8:30 AM Leonardo Express"}],"docs":[]},{"id":"sl31","time":"10:40 AM","name":"Fly FCO → CTA · ITA Airways","note":"1h20m nonstop.","address":"Rome Fiumicino Airport, Italy","tags":[{"type":"flight","text":"ITA Airways · 1h20m · FCO → CTA"}],"docs":[]},{"id":"sl32","time":"12:30 PM","name":"Rental car CTA → Taormina","note":"50 km north on A18, ~1 hour. Etna visible left.","address":"Catania Fontanarossa Airport, Catania, Italy","tags":[{"type":"warn","text":"⚠ ZTL — park at Lumbi, cable car up (€3)"}],"docs":[]}]}]},{"id":"sicily","name":"Sicilia","sub":"Aug 30 – Sep 4 · 5 nights · Taormina → Cefalù → Alcamo · PMO Sep 4","nights":5,"colorIdx":4,"days":[{"id":"d11","date":"Monday, Aug 31","title":"Taormina — Isola Bella · Blue Cave · Greek Theatre","where":"Taormina","night":"Taormina","docs":[],"slots":[{"id":"sl33","time":"7:30 AM","name":"🐟 Blue Cave boat — morning only","note":"Blue light disappears by 11 AM. Book earliest slot.","address":"Isola Bella, Taormina, Sicily, Italy","tags":[{"type":"warn","text":"⚠ MORNING ONLY — light gone by 11 AM"}],"docs":[]},{"id":"sl34","time":"10:00 AM","name":"Isola Bella swim","note":"Tiny island, protected marine reserve. 26°C water.","address":"Isola Bella, Taormina, Sicily, Italy","tags":[],"docs":[]},{"id":"sl35","time":"12:00 PM","name":"Greek Theatre of Taormina","note":"Etna fills the stage arch.","address":"Via del Teatro Greco, Taormina, Sicily, Italy","tags":[{"type":"vibe","text":"White Lotus vibes ✨"}],"docs":[]}]},{"id":"d12","date":"Tuesday, Sep 1","title":"Taormina → drive to Cefalù (~2.5h)","where":"Taormina → A18/A20 → Cefalù","night":"Cefalù (Maria ✓)","docs":[],"slots":[{"id":"sl36","time":"11:00 AM","name":"Check out · drive to Cefalù","note":"A18 north then A20 west. ~115 km, 2.5 hours.","address":"Taormina, Sicily, Italy","tags":[{"type":"drive","text":"~115 km · 2.5h · toll ~€8"}],"docs":[]},{"id":"sl37","time":"2:00 PM","name":"Arrive Cefalù — Maria's place","note":"Norman beach town. Cathedral, alleyways, La Rocca.","address":"Cefalù, Sicily, Italy","tags":[{"type":"tip","text":"Maria's place — ✓ Booked"}],"docs":[]}]},{"id":"d13","date":"Wednesday, Sep 2","title":"Cefalù — beach · cathedral · La Rocca hike","where":"Cefalù","night":"Cefalù (Maria ✓)","docs":[],"slots":[{"id":"sl38","time":"Morning","name":"Beach day","note":"Fine sand beach right in town.","address":"Cefalù Beach, Sicily, Italy","tags":[],"docs":[]},{"id":"sl39","time":"10:30 AM","name":"Norman Cathedral of Cefalù","note":"1131 AD. Byzantine gold mosaics of Christ Pantocrator.","address":"Piazza del Duomo, Cefalù, Sicily, Italy","tags":[{"type":"tip","text":"Entry ~€5 · allow 45 min"}],"docs":[]},{"id":"sl40","time":"5:00 PM","name":"La Rocca hike — sunset from the fortress","note":"45-min ascent. Views across the full coastline.","address":"La Rocca, Cefalù, Sicily, Italy","tags":[{"type":"tip","text":"Take water · path starts behind the cathedral"}],"docs":[]}]},{"id":"d14","date":"Thursday, Sep 3","title":"Cefalù → Tonnara di Scopello → Segesta → Alcamo","where":"Cefalù → Scopello → Segesta → Alcamo","night":"Alcamo (Rosa Maria ✓)","docs":[],"slots":[{"id":"sl41","time":"8:00 AM","name":"Drive west","note":"~2h to Scopello.","address":"Cefalù, Sicily, Italy","tags":[{"type":"drive","text":"Cefalù → Scopello: ~2h · 110 km"}],"docs":[]},{"id":"sl42","time":"10:30 AM","name":"Tonnara di Scopello","note":"Ancient tuna facility between rock stacks in a perfect blue cove.","address":"Tonnara di Scopello, Scopello, Sicily, Italy","tags":[],"docs":[]},{"id":"sl43","time":"1:00 PM","name":"Segesta — Greek temple & theatre","note":"5th-century BC temple. Still standing after 2,500 years.","address":"Parco Archeologico di Segesta, Calatafimi-Segesta, Sicily, Italy","tags":[{"type":"tip","text":"parcodisegesta.it · ~€10 · allow 2 hrs"}],"docs":[]},{"id":"sl44","time":"3:30 PM","name":"Arrive Alcamo — Rosa Maria's Airbnb","note":"30 min from PMO. Pack tonight.","address":"Alcamo, Sicily, Italy","tags":[{"type":"warn","text":"⚠ Set alarm 6:00 AM · leave 6:30 AM"}],"docs":[]}]},{"id":"d15","date":"Friday, Sep 4","title":"⚠ Tight departure — PMO → Istanbul","where":"Alcamo → PMO → IST","night":"Istanbul (James ✓)","docs":[],"slots":[{"id":"sl45","time":"6:00 AM","name":"⚠ Wake up · leave Alcamo 6:30 AM","note":"Drive 20–30 min to PMO. Return rental car. Check-in closes 8:25 AM.","address":"Alcamo, Sicily, Italy","tags":[{"type":"warn","text":"⚠ Check-in closes 8:25 AM for 9:25 AM flight"}],"docs":[]},{"id":"sl46","time":"9:25 AM","name":"Fly PMO → IST · Turkish Airlines","note":"2h35m nonstop. Arrive Istanbul 1:00 PM.","address":"Palermo Falcone-Borsellino Airport, Italy","tags":[{"type":"flight","text":"Turkish Airlines · 2h35m · PMO → IST"}],"docs":[]},{"id":"sl47","time":"1:45 PM","name":"Arrive Istanbul · taxi to Beyoğlu","note":"BiTaksi app · 35–45 min · ~€25–35.","address":"Istanbul Airport (IST), Istanbul, Turkey","tags":[{"type":"tip","text":"BiTaksi app · official taxi rank at IST"}],"docs":[]}]}]},{"id":"istanbul","name":"İstanbul","sub":"Turkey · Sep 4–7 · 3 nights · James's place Beyoğlu · Fly home Sep 7","nights":3,"colorIdx":2,"days":[{"id":"d16","date":"Saturday, Sep 5","title":"Çemberlitaş Hamamı · Grand Bazaar · Bosphorus sunset","where":"Sultanahmet + Beyoğlu","night":"Istanbul","docs":[],"slots":[{"id":"sl48","time":"10:00 AM","name":"🛁 Çemberlitaş Hamamı","note":"Built by Sinan 1584. Kese scrub, soap massage on heated marble. Allow 2 hours.","address":"Vezirhan Cd. 8, Fatih, Istanbul, Turkey","tags":[{"type":"tip","text":"cemberlitashamami.com · ~€30–45"}],"docs":[]},{"id":"sl49","time":"1:00 PM","name":"Grand Bazaar & Spice Market","note":"4,000 shops since 1455. Turkish delight, saffron, ceramics.","address":"Kapalıçarşı, Beyazıt, Istanbul, Turkey","tags":[],"docs":[]},{"id":"sl50","time":"3:30 PM","name":"Bosphorus ferry to Asian side","note":"Eminönü to Üsküdar: €1, 20 min. You are now in Asia.","address":"Eminönü Ferry Terminal, Istanbul, Turkey","tags":[],"docs":[]},{"id":"sl51","time":"Evening","name":"Rooftop sunset · dinner","note":"Le Fumoir rooftop at Georges Hotel Galata.","address":"Georges Hotel Galata, Beyoğlu, Istanbul, Turkey","tags":[{"type":"food","text":"Zübeyir Ocakbaşı — grilled meats over charcoal"}],"docs":[]}]},{"id":"d17","date":"Sunday, Sep 6","title":"Topkapı Palace · Kadıköy · Ortaköy","where":"Sultanahmet + Asian side","night":"Istanbul","docs":[],"slots":[{"id":"sl52","time":"9:30 AM","name":"Topkapı Palace + Harem","note":"Ottoman Empire HQ for 400 years. Topkapı Dagger, 86-carat diamond.","address":"Topkapı Palace, Fatih, Istanbul, Turkey","tags":[{"type":"tip","text":"muze.gov.tr · Harem separate ticket · closed Tues"}],"docs":[]},{"id":"sl53","time":"1:00 PM","name":"Ferry to Kadıköy food market","note":"Most vibrant neighbourhood in Istanbul.","address":"Kadıköy, Istanbul, Turkey","tags":[{"type":"food","text":"Çiya Sofrası — extraordinary Anatolian cooking"}],"docs":[]},{"id":"sl54","time":"3:30 PM","name":"Ortaköy mosque & kumpir","note":"Baroque mosque on the water with the Bosphorus Bridge above.","address":"Ortaköy Mosque, Beşiktaş, Istanbul, Turkey","tags":[],"docs":[]}]},{"id":"d18","date":"Monday, Sep 7","title":"Last morning · fly IST → Newark EWR","where":"Istanbul → IST Airport → EWR","night":"Flying home ✈","docs":[],"slots":[{"id":"sl55","time":"Morning","name":"Final simit & çay · Grand Bazaar","note":"Grand Bazaar open Mondays. Last Turkish breakfast.","address":"Grand Bazaar, Beyazıt, Istanbul, Turkey","tags":[],"docs":[]},{"id":"sl56","time":"4:00 PM","name":"⚠ Taxi to Istanbul Airport (IST)","note":"45+ km from Beyoğlu. Leave no later than 4:00 PM.","address":"Beyoğlu, Istanbul, Turkey","tags":[{"type":"warn","text":"⚠ Leave Beyoğlu NO LATER than 4:00 PM"}],"docs":[]},{"id":"sl57","time":"6:40 PM","name":"✈ Fly IST → EWR · Turkish Airlines","note":"10h40m nonstop. Arrive Newark ~10:20 PM.","address":"Istanbul Airport (IST), Istanbul, Turkey","tags":[{"type":"flight","text":"Turkish Airlines · 10h40m · IST → EWR"}],"docs":[]}]}]}],"budget":{"b-flights":0,"b-car":0,"b-trains":0,"b-local":0,"b-tickets":0,"b-food":0,"b-entertain":0,"b-shopping":0}};
+
+/* ── STATE ── */
+let state=null, editMode=false, unsaved=false;
+let _docCtx=null, _tagCtx=null, _queue=[];
+
+/* ── LOAD / SAVE ── */
+function loadState(){
+  try{const r=localStorage.getItem(SK);if(r){state=JSON.parse(r);return;}}catch(e){}
+  state=JSON.parse(JSON.stringify(DEFAULT));
+  // Ensure all slots have address field
+  state.cities.forEach(c=>c.days.forEach(d=>d.slots.forEach(s=>{if(!s.address)s.address='';})));
+}
+
+function saveState(){
+  try{localStorage.setItem(SK,JSON.stringify(state));}catch(e){alert('Storage full — try removing some images.');}
+  unsaved=false;updateSaveIndicator();flashToast();
+}
+function markUnsaved(){unsaved=true;updateSaveIndicator();}
+function updateSaveIndicator(){
+  const d=document.getElementById('save-dot'),l=document.getElementById('save-label');
+  if(unsaved){d.className='indicator unsaved';l.textContent='Unsaved changes';}
+  else{d.className='indicator saved';l.textContent='All saved';}
+}
+let _toastTimer;
+function flashToast(){const t=document.getElementById('save-toast');t.classList.add('show');clearTimeout(_toastTimer);_toastTimer=setTimeout(()=>t.classList.remove('show'),2000);}
+function resetAll(){if(!confirm('Reset ALL edits to defaults?'))return;localStorage.removeItem(SK);state=JSON.parse(JSON.stringify(DEFAULT));renderAll();saveState();}
+
+/* ── EDIT MODE ── */
+function toggleEdit(){
+  editMode=!editMode;
+  document.body.classList.toggle('editing',editMode);
+  const btn=document.getElementById('edit-btn');
+  btn.textContent=editMode?'👁 Done':'✏ Edit';
+  btn.className='btn '+(editMode?'blue':'');
+  document.querySelectorAll('[data-field]').forEach(el=>{el.contentEditable=editMode?'true':'false';});
+  document.querySelectorAll('.f-date,.f-route,.f-info,.slot-t,.slot-name,.slot-note,.city-name,.city-sub,.city-nights-num,.day-date,.day-title,.day-where,.night-badge').forEach(el=>{el.contentEditable=editMode?'true':'false';});
+  applyEditBtns();
+}
+
+/* ── RENDER ALL ── */
+function renderAll(){
+  renderHero();renderFlights();renderSbTable();renderCities();
+  renderDayNav();renderCalendar();renderMap();renderBudget();
+}
+
+/* ── HERO ── */
+function renderHero(){
+  const h=state.hero;
+  Object.keys(h).forEach(k=>{const el=document.querySelector(`[data-field="${k}"]`);if(el)el.innerHTML=h[k];});
+  document.querySelectorAll('[data-field]').forEach(el=>{
+    el.oninput=()=>{state.hero[el.dataset.field]=el.innerHTML;markUnsaved();};
+    el.contentEditable=editMode?'true':'false';
+  });
+}
+
+/* ── FLIGHTS ── */
+function renderFlights(){
+  const list=document.getElementById('flights-list');
+  list.innerHTML=state.flights.map((f,i)=>`
+    <div class="flight-card" id="fc-${f.id}">
+      <span class="f-date" oninput="state.flights[${i}].date=this.innerText;markUnsaved()">${f.date}</span>
+      <div class="f-route" oninput="state.flights[${i}].route=this.innerText;markUnsaved()">${f.route}</div>
+      <div class="f-divider"></div>
+      <div class="f-info" style="white-space:pre-line" oninput="state.flights[${i}].info=this.innerText;markUnsaved()">${f.info}</div>
+      ${f.badge?`<span class="f-badge">${f.badge}</span>`:''}
+      <div class="f-booking">
+        ${renderDocChips(f.docs,'flight',f.id)}
+        <button class="attach-btn" onclick="openDocModal('flight','${f.id}')">📎 Add booking</button>
+        ${editMode?`<button class="attach-btn" onclick="deleteFlight('${f.id}')" style="color:#fca5a5">✕</button>`:''}
+      </div>
+    </div>`).join('');
+  list.querySelectorAll('.f-date,.f-route,.f-info').forEach(el=>{el.contentEditable=editMode?'true':'false';});
+}
+
+/* ── STATUS BOARD — sorted by date (feature 2) + hotel auto-link (feature 4) ── */
+function parseSortDate(str){
+  if(!str)return new Date(9999,0,1);
+  const months={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+  // Extract first date found, e.g. "Aug 20–25" → Aug 20
+  const m=str.match(/(\w{3,})\s+(\d+)/i);
+  if(!m)return new Date(9999,0,1);
+  const mon=months[m[1].toLowerCase().slice(0,3)];
+  if(mon===undefined)return new Date(9999,0,1);
+  return new Date(2026,mon,parseInt(m[2]));
+}
+
+// Build hotel lookup from sbRows docs
+function buildHotelLookup(){
+  const lookup={};
+  state.sbRows.forEach(r=>{
+    if(r.docs&&r.docs.length&&r.status==='ok'){
+      // parse date range and assign hotel to those days
+      const d=r.date;
+      // try to extract city match
+      const cityMatch=r.city.replace(/[🇬🇧🇮🇹🇹🇷✈🚆]/gu,'').trim().toLowerCase();
+      r.docs.forEach(doc=>{lookup[cityMatch]=doc;});
+    }
+  });
+  return lookup;
+}
+
+function renderSbTable(){
+  // Sort by date
+  const sorted=[...state.sbRows].sort((a,b)=>parseSortDate(a.date)-parseSortDate(b.date));
+  const body=document.getElementById('sb-body');
+  body.innerHTML=sorted.map((r,si)=>{
+    const i=state.sbRows.findIndex(x=>x.id===r.id);
+    const p=PILL_MAP[r.status]||PILL_MAP.ok;
+    return `<tr>
+      <td class="sb-date"><span oninput="state.sbRows[${i}].date=this.innerText;markUnsaved();renderSbTable();renderCalendar();">${r.date}</span></td>
+      <td class="sb-city"><span oninput="state.sbRows[${i}].city=this.innerText;markUnsaved();">${r.city}</span></td>
+      <td class="sb-detail"><span oninput="state.sbRows[${i}].detail=this.innerText;markUnsaved();">${r.detail}</span></td>
+      <td><div class="sb-right">
+        ${renderDocChips(r.docs,'sbRow',r.id)}
+        <span class="row-attach"><button class="row-attach-btn" onclick="openDocModal('sbRow','${r.id}')">📎</button></span>
+        <span class="pip ${p.cls}" onclick="cyclePip('${r.id}')">${p.lbl}</span>
+        ${editMode?`<button onclick="deleteSbRow('${r.id}')" style="background:none;border:none;color:var(--red);font-size:11px;cursor:pointer;padding:2px">✕</button>`:''}
+      </div></td>
+    </tr>`;
+  }).join('');
+  body.querySelectorAll('[oninput]').forEach(el=>{el.contentEditable=editMode?'true':'false';});
+}
+
+/* ── CITIES ── */
+function renderCities(){
+  const cont=document.getElementById('cities');
+  cont.innerHTML='';
+  // Also build hotel lookup for auto-linking (feature 4)
+  const hotelLookup=buildHotelLookup();
+  state.cities.forEach((city,ci)=>{
+    const color=CITY_COLORS[city.colorIdx%CITY_COLORS.length];
+    const sec=document.createElement('div');
+    sec.className='city-sec fade-in';sec.id=city.id;
+    sec.innerHTML=`
+      <button class="city-del" onclick="deleteCity('${city.id}')">Remove destination</button>
+      <div class="city-hdr">
+        <div class="city-name-wrap">
+          <div class="city-name" style="color:${color}" oninput="state.cities[${ci}].name=this.innerText;markUnsaved();renderDayNav();renderCalendar();">${city.name}</div>
+          <div class="city-sub" oninput="state.cities[${ci}].sub=this.innerText;markUnsaved();">${city.sub}</div>
+        </div>
+        <div>
+          <div class="city-nights-num" style="color:${color}" oninput="state.cities[${ci}].nights=this.innerText;markUnsaved();">${city.nights}</div>
+          <div class="city-nights-lbl">Nights</div>
+        </div>
+      </div>
+      <div id="days-${city.id}"></div>
+      <button class="add-strip" onclick="addDay('${city.id}')">+ Add day</button>`;
+    cont.appendChild(sec);
+    sec.querySelectorAll('.city-name,.city-sub,.city-nights-num').forEach(el=>{el.contentEditable=editMode?'true':'false';});
+    const daysDiv=sec.querySelector(`#days-${city.id}`);
+    city.days.forEach((day,di)=>{
+      // Auto-link hotel from sbRows (feature 4)
+      const autoHotel=getAutoHotelForDay(day,city);
+      daysDiv.appendChild(buildDayEl(city,ci,day,di,color,autoHotel));
+    });
+    const first=daysDiv.querySelector('.day');if(first)first.classList.add('open');
+    obsv.observe(sec);
+  });
+}
+
+// Feature 4: find hotel booking from sbRows that matches this day's city/date
+function getAutoHotelForDay(day,city){
+  const dayDate=parseDate(day.date);
+  if(!dayDate)return null;
+  const cityLower=city.name.toLowerCase();
+  // Look for an sbRow that is booked + city matches + date range includes this day
+  for(const r of state.sbRows){
+    if(r.status!=='ok'||!r.docs||!r.docs.length)continue;
+    const rCityLower=r.city.replace(/[^\w\s]/gu,'').trim().toLowerCase();
+    if(!rCityLower.includes(cityLower.slice(0,5))&&!cityLower.includes(rCityLower.replace(/[^a-z]/g,'').slice(0,5)))continue;
+    // Has a matching booking
+    return r.docs[0];
+  }
+  return null;
+}
+
+function buildDayEl(city,ci,day,di,color,autoHotel){
+  const el=document.createElement('div');
+  el.className='day';el.id='day-'+day.id;
+  el.style.setProperty('--city-col',color);
+  const dayDocs=day.docs||[];
+
+  // Show auto-hotel chip if no manual docs and auto found
+  const showAutoHotel=autoHotel&&dayDocs.length===0;
+
+  el.innerHTML=`
+    <div class="day-hdr" onclick="toggleDay(this.parentElement)">
+      <div class="day-n">${di+1}</div>
+      <div class="day-meta">
+        <div class="day-date" oninput="findDay('${day.id}').date=this.innerText;markUnsaved();renderDayNav();renderCalendar();renderMap();">${day.date}</div>
+        <div class="day-title" oninput="findDay('${day.id}').title=this.innerText;markUnsaved();renderDayNav();">${day.title}</div>
+        ${day.where?`<div class="day-where" oninput="findDay('${day.id}').where=this.innerText;markUnsaved();">${day.where}</div>`:''}
+        <div class="day-book-row" id="daybook-${day.id}">
+          ${dayDocs.map((d,i)=>`
+            <span class="day-book-chip" onclick="viewDoc('day','${day.id}',${i});event.stopPropagation()" title="${d.label}">
+              ${d.image?'🏨':'🔗'} ${d.label.length>24?d.label.slice(0,22)+'…':d.label}
+              ${editMode?`<span onclick="removeDoc('day','${day.id}',${i});event.stopPropagation()" style="margin-left:3px;color:var(--red)">✕</span>`:''}
+            </span>`).join('')}
+          ${showAutoHotel?`<span class="day-book-chip" style="opacity:.75;cursor:pointer" onclick="viewDocDirect(${JSON.stringify(autoHotel).replace(/"/g,'&quot;')});event.stopPropagation()" title="${autoHotel.label}">🏨 ${autoHotel.label.slice(0,22)} <span style="font-size:8px;opacity:.6">(auto)</span></span>`:''}
+          <button class="day-book-btn" onclick="openDocModal('day','${day.id}');event.stopPropagation()">🏨 Add hotel booking</button>
+        </div>
+      </div>
+      ${day.night?`<div class="night-badge" oninput="findDay('${day.id}').night=this.innerText.replace('🌙 ','');markUnsaved();">🌙 ${day.night}</div>`:''}
+      <div class="chev"><svg viewBox="0 0 12 8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5 5-5"/></svg></div>
+    </div>
+    <div class="day-actions">
+      <button class="sm-btn" onclick="moveDayUp('${city.id}','${day.id}');event.stopPropagation()">↑</button>
+      <button class="sm-btn" onclick="moveDayDown('${city.id}','${day.id}');event.stopPropagation()">↓</button>
+      <button class="sm-btn danger" onclick="deleteDay('${city.id}','${day.id}');event.stopPropagation()">Remove day</button>
+    </div>
+    <div class="day-body"><div class="day-body-in">
+      <div class="slots" id="slots-${day.id}">
+        ${day.slots.map((s,si)=>buildSlotHTML(s,ci,di,si)).join('')}
+      </div>
+      <button class="add-strip" style="margin-top:6px" onclick="addSlot('${day.id}')">+ Add stop</button>
+    </div></div>`;
+  el.querySelectorAll('.day-date,.day-title,.day-where,.night-badge').forEach(e=>{e.contentEditable=editMode?'true':'false';});
+  el.querySelectorAll('.slot-t,.slot-name,.slot-note').forEach(e=>{e.contentEditable=editMode?'true':'false';});
+  return el;
+}
+
+function buildSlotHTML(s,ci,di,si){
+  const hasDocs=s.docs&&s.docs.length>0;
+  const tagsHTML=(s.tags||[]).map((t,ti)=>
+    `<span class="tag" style="${tagStyle(t.type)}" onclick="openTagModal(${ci},${di},${si},${ti})">${t.text}</span>`
+  ).join('');
+  const addr=s.address||'';
+  return `
+    <div class="slot" id="slot-${s.id}">
+      <div class="slot-t" oninput="findSlot('${s.id}').time=this.innerText;markUnsaved()">${s.time}</div>
+      <div>
+        <div class="slot-name" oninput="findSlot('${s.id}').name=this.innerText;markUnsaved()">${s.name}</div>
+        <div class="slot-note" oninput="findSlot('${s.id}').note=this.innerText;markUnsaved()">${s.note}</div>
+        ${addr?`<div class="slot-has-address"><span class="pin">📍</span>${addr}</div>`:''}
+        <div class="slot-address">
+          <span class="slot-address-label">📍 Address:</span>
+          <div class="slot-address-inner">
+            <input type="text" placeholder="Add address for map pin…" value="${addr.replace(/"/g,'&quot;')}"
+              oninput="findSlot('${s.id}').address=this.value;markUnsaved();"
+              onblur="saveState();renderMap();"
+              onclick="event.stopPropagation()">
+          </div>
+        </div>
+        <div class="tags" id="tags-${s.id}">
+          ${tagsHTML}
+          <button class="sm-btn" style="display:none;font-size:10px;padding:2px 7px" id="addtag-${s.id}" onclick="addTagTo('${s.id}')">+ tag</button>
+        </div>
+        <div class="slot-docs" id="docs-${s.id}">${renderDocCards(s.docs,'slot',s.id)}</div>
+        <button class="slot-attach-btn ${hasDocs?'has-docs':''}" id="adddoc-${s.id}" onclick="openDocModal('slot','${s.id}')">
+          📎 ${hasDocs?'Add more bookings':'Add booking / ticket / QR'}
+        </button>
+      </div>
+      <div class="slot-actions">
+        <button class="sm-btn" onclick="moveSlotUp('${s.id}')">↑</button>
+        <button class="sm-btn" onclick="moveSlotDown('${s.id}')">↓</button>
+        <button class="sm-btn danger" onclick="deleteSlot('${s.id}')">✕</button>
+      </div>
+    </div>`;
+}
+
+function renderDocCards(docs,type,id){
+  if(!docs||!docs.length)return'';
+  return docs.map((d,i)=>`
+    <div class="doc-card" id="doccard-${d.id}" onclick="editMode?void(0):viewDoc('${type}','${id}',${i})">
+      <div class="doc-card-display">
+        ${d.image?`<img class="doc-thumb" src="${d.image}" alt="${d.label}">`:`<div class="doc-thumb-placeholder">${d.link?'🔗':'📄'}</div>`}
+        <div class="doc-info">
+          <div class="doc-label-text">${d.label}</div>
+          <div class="doc-meta">
+            ${d.image?'<span>Image</span>':''}
+            ${d.link?`<span class="doc-link-pill">🔗 link</span>`:''}
+          </div>
+        </div>
+      </div>
+      <div class="doc-card-edit">
+        <input class="doc-edit-input" type="text" value="${d.label.replace(/"/g,'&quot;')}" placeholder="Label"
+          oninput="updateDoc('${type}','${id}',${i},'label',this.value)">
+        <input class="doc-edit-input" type="url" value="${(d.link||'').replace(/"/g,'&quot;')}" placeholder="Booking link (optional)"
+          oninput="updateDoc('${type}','${id}',${i},'link',this.value||null)">
+        <div class="doc-edit-actions">
+          <button class="doc-edit-save" onclick="saveState();renderAll()">✓ Save</button>
+          <button class="doc-edit-del" onclick="removeDoc('${type}','${id}',${i})">🗑 Delete</button>
+        </div>
+      </div>
+      <button class="doc-del" onclick="removeDoc('${type}','${id}',${i});event.stopPropagation()">✕</button>
+    </div>`).join('');
+}
+
+function renderDocChips(docs,type,id){
+  if(!docs||!docs.length)return'';
+  return docs.map((d,i)=>`
+    <span class="booking-chip" onclick="viewDoc('${type}','${id}',${i})" title="${d.label}">
+      ${d.image?'🖼':'🔗'} ${d.label.length>20?d.label.slice(0,18)+'…':d.label}
+      ${editMode?`<span style="margin-left:3px" onclick="removeDoc('${type}','${id}',${i});event.stopPropagation()">✕</span>`:''}
+    </span>`).join('');
+}
+
+function updateDoc(type,targetId,idx,field,value){
+  const arr=getDocArr(type,targetId);if(!arr||!arr[idx])return;
+  arr[idx][field]=value;markUnsaved();
+}
+
+/* ── DAY NAV (feature 5) — city buttons, hover reveals day dropdown ── */
+function renderDayNav(){
+  const nav=document.getElementById('day-nav');
+  nav.innerHTML='';
+  state.cities.forEach(city=>{
+    const color=CITY_COLORS[city.colorIdx%CITY_COLORS.length];
+    const emoji=cityEmoji(city.name);
+    const nights=city.nights||city.days.length;
+
+    const wrap=document.createElement('div');
+    wrap.className='day-nav-city';
+
+    // City-level button
+    const cityBtn=document.createElement('button');
+    cityBtn.className='day-nav-city-btn';
+    cityBtn.style.borderBottomColor=color;
+    cityBtn.innerHTML=`<span class="dnc-emoji">${emoji}</span><span class="dnc-name">${city.name}</span><span class="dnc-nights">${nights}n</span><span class="dnc-arrow">▼</span>`;
+    cityBtn.onclick=()=>{
+      // Click city btn → scroll to first day of that city
+      if(city.days.length){document.getElementById('day-'+city.days[0].id)?.scrollIntoView({behavior:'smooth',block:'start'});}
+    };
+    wrap.appendChild(cityBtn);
+
+    // Dropdown with individual days
+    const dropdown=document.createElement('div');
+    dropdown.className='day-nav-dropdown';
+    dropdown.style.borderTopColor=color;
+    city.days.forEach(day=>{
+      const d=parseDate(day.date);
+      const dateLabel=d?`${d.toLocaleString('en',{month:'short'})} ${d.getDate()}`:'';
+      const item=document.createElement('div');
+      item.className='day-nav-dd-item';
+      // Feature 5: use day title from itinerary
+      const cleanTitle=day.title.replace(/[⚠★]/g,'').trim();
+      item.innerHTML=`<span class="day-nav-dd-date">${dateLabel}</span><span class="day-nav-dd-title">${cleanTitle}</span>`;
+      item.onclick=(e)=>{
+        e.stopPropagation();
+        document.getElementById('day-'+day.id)?.scrollIntoView({behavior:'smooth',block:'start'});
+      };
+      dropdown.appendChild(item);
+    });
+    wrap.appendChild(dropdown);
+    nav.appendChild(wrap);
+  });
+}
+
+/* ── CALENDAR (feature 6) ── */
+function renderCalendar(){
+  const grid=document.getElementById('calendar-grid');
+  // Build date→day lookup
+  const dayMap={};
+  state.cities.forEach((city)=>{
+    const color=CITY_COLORS[city.colorIdx%CITY_COLORS.length];
+    const emoji=cityEmoji(city.name);
+    city.days.forEach(day=>{
+      const d=parseDate(day.date);
+      if(!d)return;
+      const key=formatDateKey(d);
+      const concertSlot=day.slots&&day.slots.find(s=>s.name&&(s.name.includes('★')||s.name.toLowerCase().includes('concert')));
+      const flightSlot=day.slots&&day.slots.find(s=>s.tags&&s.tags.some(t=>t.type==='flight'));
+      let mainEmoji=emoji;
+      if(concertSlot)mainEmoji='🎤';
+      else if(flightSlot)mainEmoji='✈️';
+      // Use day title (truncated) for calendar label (feature 5)
+      const shortTitle=day.title.replace(/[⚠★🏺]/g,'').trim().slice(0,18);
+      dayMap[key]={day,city,color,emoji:mainEmoji,shortTitle};
+    });
+  });
+
+  const today=new Date();
+  const todayKey=formatDateKey(today);
+  const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  grid.innerHTML='';
+  // Day-of-week headers
+  days.forEach(d=>{const h=document.createElement('div');h.className='cal-head';h.textContent=d;grid.appendChild(h);});
+
+  // Only render Aug 16 – Sep 7, 2026
+  // Aug 16 is a Sunday (day 0) — perfect grid start
+  const startDate=new Date(2026,7,16); // Aug 16
+  const endDate=new Date(2026,8,7);    // Sep 7 (inclusive)
+
+  // Start on the Sunday of the week containing Aug 16
+  // Aug 16 2026 = Sunday, so no padding needed
+  const startDow=startDate.getDay(); // 0 = Sun
+  // Add empty cells for alignment
+  for(let i=0;i<startDow;i++){const e=document.createElement('div');e.className='cal-day empty';grid.appendChild(e);}
+
+  const cur=new Date(startDate);
+  while(cur<=endDate){
+    const key=formatDateKey(cur);
+    const info=dayMap[key];
+    const d=cur.getDate();
+    const mo=cur.toLocaleString('en',{month:'short'});
+    const cell=document.createElement('div');
+    cell.className='cal-day'+(info?' in-trip':'')+(key===todayKey?' today':'');
+    if(info){
+      cell.style.borderLeftColor=info.color;
+      cell.style.borderLeftWidth='3px';
+      cell.style.borderLeftStyle='solid';
+      cell.innerHTML=`<div class="cal-date">${mo} ${d}</div>
+        <span class="cal-emoji">${info.emoji}</span>
+        <div class="cal-note" title="${info.day.title}">${info.shortTitle}</div>`;
+      cell.title=`${info.day.date}: ${info.day.title}`;
+      cell.style.cursor='pointer';
+      cell.onclick=()=>{document.getElementById('day-'+info.day.id)?.scrollIntoView({behavior:'smooth',block:'start'});};
+    } else {
+      cell.innerHTML=`<div class="cal-date" style="opacity:.35">${mo} ${d}</div>`;
+    }
+    grid.appendChild(cell);
+    cur.setDate(cur.getDate()+1);
+  }
+}
+
+// kept for compatibility but no longer called
+function renderMonth(){}
+
+/* ── MAP (features 7 & 8) ── */
+function renderMap(){
+  // Collect one representative address per city (first slot with address)
+  const cityPins=[];
+  state.cities.forEach(city=>{
+    const color=CITY_COLORS[city.colorIdx%CITY_COLORS.length];
+    const emoji=cityEmoji(city.name);
+    let addr='';
+    outer: for(const day of city.days){
+      for(const slot of day.slots){
+        if(slot.address&&slot.address.trim()){addr=slot.address.trim();break outer;}
+      }
+    }
+    if(addr)cityPins.push({city:city.name,address:addr,color,emoji});
+  });
+
+  // City legend below map
+  const legend=document.getElementById('map-city-legend');
+  if(legend){
+    legend.innerHTML=cityPins.map(p=>`
+      <span class="map-legend-chip">
+        <span class="map-legend-dot" style="background:${p.color}"></span>
+        <span>${p.emoji} ${p.city}</span>
+        <span style="font-size:9.5px;color:var(--muted)">${p.address.split(',')[0]}</span>
+      </span>`).join('');
+  }
+
+  if(!cityPins.length)return;
+
+  // Build an OpenStreetMap iframe URL using nominatim bbox approach
+  // We'll use a Google Maps directions embed — no API key required for basic embed
+  // Format: https://maps.google.com/maps?q=...&output=embed
+  // For multi-stop route, use a directions embed with waypoints encoded in the URL
+  
+  // Build the best-effort iframe src: Google Maps directions (no API key needed for embed)
+  // origin → wp1 → wp2 → ... → destination
+  if(cityPins.length===1){
+    const q=encodeURIComponent(cityPins[0].address);
+    document.getElementById('map-iframe').src=
+      `https://maps.google.com/maps?q=${q}&t=m&z=12&output=embed&iwloc=near`;
+    return;
+  }
+
+  // Multi-city: build a directions URL
+  const origin=encodeURIComponent(cityPins[0].address);
+  const dest=encodeURIComponent(cityPins[cityPins.length-1].address);
+  const wps=cityPins.slice(1,-1).map(p=>encodeURIComponent(p.address));
+  
+  // Google Maps directions embed (no API key, works in iframe)
+  // saddr=origin, daddr=wp1+to:wp2+to:destination
+  const daddrParts=[...wps.map(w=>w),dest];
+  const daddr=daddrParts.join('+to:');
+  const src=`https://maps.google.com/maps?saddr=${origin}&daddr=${daddr}&t=m&output=embed`;
+  document.getElementById('map-iframe').src=src;
+}
+
+function openMapPin(idx){
+  const pins=[];
+  state.cities.forEach(city=>{city.days.forEach(day=>{day.slots.forEach(slot=>{if(slot.address&&slot.address.trim())pins.push({slot,day});});});});
+  if(pins[idx]){document.getElementById('day-'+pins[idx].day.id)?.scrollIntoView({behavior:'smooth',block:'start'});}
+}
+
+/* ── BUDGET (feature 3) ── */
+function makeSplitRow(label,amt,persons){
+  const row=document.createElement('div');
+  row.className='budget-split-row';
+  row.dataset.cat='accom';
+  row.innerHTML=`<label class="bsr-label" contenteditable="false" title="${label}">${label}</label><span class="curr">$</span><input type="number" class="bsr-amt" value="${amt||0}" oninput="recalcBudget()"><input type="number" class="bsr-persons" value="${persons||1}" min="1" title="÷ persons (your share)" oninput="recalcBudget()"><span class="bsr-each"></span><button class="bsr-del" onclick="delBudgetRow(this)">✕</button>`;
+  return row;
+}
+
+function addBudgetRow(cat){
+  const label=prompt('Item name:');if(!label)return;
+  const containerId=cat==='accom'?'budget-accom-rows':cat==='transport'?'budget-transport-rows':'budget-activities-rows';
+  const cont=document.getElementById(containerId);
+  if(!cont)return;
+  const row=document.createElement('div');
+  row.className='budget-split-row';row.dataset.cat=cat;
+  row.innerHTML=`<label class="bsr-label" contenteditable="true">${label}</label><span class="curr">$</span><input type="number" class="bsr-amt" value="0" oninput="recalcBudget()"><input type="number" class="bsr-persons" value="1" min="1" title="÷ persons" oninput="recalcBudget()"><span class="bsr-each"></span><button class="bsr-del" onclick="delBudgetRow(this)">✕</button>`;
+  cont.appendChild(row);
+  row.querySelector('.bsr-amt').focus();
+  recalcBudget();
+}
+
+function delBudgetRow(btn){
+  btn.closest('.budget-split-row')?.remove();
+  recalcBudget();
+}
+
+function renderBudget(){
+  // Auto-populate accommodation from sbRows with dollar amounts in docs
+  const autoRows=[];
+  state.sbRows.forEach(r=>{
+    if(r.docs&&r.docs.length){
+      const priceMatch=r.docs[0]?.label?.match(/\$?([\d,]+\.?\d*)/);
+      const price=priceMatch?parseFloat(priceMatch[1].replace(',','')):0;
+      if(price>0){autoRows.push({label:r.city.replace(/[^\w\s]/gu,'').trim(),price});}
+    }
+  });
+  const rowsEl=document.getElementById('budget-accom-rows');
+  rowsEl.innerHTML='';
+  if(autoRows.length){
+    autoRows.forEach(r=>rowsEl.appendChild(makeSplitRow(r.label,r.price,1)));
+  } else {
+    rowsEl.appendChild(makeSplitRow('Hotels / Airbnbs',0,1));
+  }
+
+  // Restore global persons
+  if(state.budget){
+    const pEl=document.getElementById('b-persons');
+    if(pEl&&state.budget['b-persons'])pEl.value=state.budget['b-persons'];
+  }
+  recalcBudget();
+}
+
+// Sum a category: returns {total, myShare}
+function sumCat(rows){
+  let total=0,myShare=0;
+  rows.forEach(row=>{
+    const amt=parseFloat(row.querySelector('.bsr-amt')?.value)||0;
+    const persons=Math.max(1,parseInt(row.querySelector('.bsr-persons')?.value)||1);
+    const share=amt/persons;
+    total+=amt;myShare+=share;
+    const chip=row.querySelector('.bsr-each');
+    if(chip)chip.textContent=persons>1?`÷${persons}=$${Math.round(share)}`:'';
+  });
+  return{total,myShare};
+}
+
+function recalcBudget(){
+  const accomRows=[...document.querySelectorAll('#budget-accom-rows .budget-split-row')];
+  const transportRows=[...document.querySelectorAll('#budget-transport-rows .budget-split-row')];
+  const activitiesRows=[...document.querySelectorAll('#budget-activities-rows .budget-split-row')];
+
+  const ac=sumCat(accomRows);
+  const tr=sumCat(transportRows);
+  const av=sumCat(activitiesRows);
+
+  // accom total input
+  const accomTotalEl=document.getElementById('b-accom-total');
+  if(accomTotalEl)accomTotalEl.value=ac.total.toFixed(0);
+
+  const misc=Math.round((ac.total+tr.total+av.total)*0.1);
+  const miscShare=Math.round((ac.myShare+tr.myShare+av.myShare)*0.1);
+  const total=ac.total+tr.total+av.total+misc;
+  const myShare=ac.myShare+tr.myShare+av.myShare+miscShare;
+  const nights=parseInt(state.hero.nights)||18;
+  const fmt=n=>'$'+Math.round(n).toLocaleString();
+  const fmtShare=(tot,share)=>tot===share?'':`→ ${fmt(share)}`;
+
+  document.getElementById('bs-accom').textContent=fmt(ac.total);
+  document.getElementById('bs-transport').textContent=fmt(tr.total);
+  document.getElementById('bs-activities').textContent=fmt(av.total);
+  document.getElementById('bs-misc').textContent=fmt(misc);
+  document.getElementById('bs-total').textContent=fmt(total);
+  document.getElementById('bs-myshare').textContent=fmt(myShare);
+  const shAccom=document.getElementById('bsh-accom');if(shAccom)shAccom.textContent=fmtShare(ac.total,ac.myShare);
+  const shTrans=document.getElementById('bsh-transport');if(shTrans)shTrans.textContent=fmtShare(tr.total,tr.myShare);
+  const shAct=document.getElementById('bsh-activities');if(shAct)shAct.textContent=fmtShare(av.total,av.myShare);
+  const shMisc=document.getElementById('bsh-misc');if(shMisc)shMisc.textContent=fmtShare(misc,miscShare);
+  document.getElementById('bs-perday').textContent=myShare?`Your share: ${fmt(Math.round(myShare/nights))}/day · ${nights} nights`:'— per day average';
+
+  const pct=t=>total?Math.round(t/total*100):0;
+  const acPct=pct(ac.total),trPct=pct(tr.total),avPct=pct(av.total);
+  document.getElementById('bb-accom').style.width=acPct+'%';
+  document.getElementById('bb-trans').style.width=trPct+'%';
+  document.getElementById('bb-act').style.width=avPct+'%';
+  document.getElementById('bbl-accom').textContent=acPct+'%';
+  document.getElementById('bbl-trans').textContent=trPct+'%';
+  document.getElementById('bbl-act').textContent=avPct+'%';
+
+  if(!state.budget)state.budget={};
+  state.budget['b-persons']=parseInt(document.getElementById('b-persons')?.value)||1;
+  markUnsaved();
+}
+
+/* ── FINDERS ── */
+function uid(){return '_'+Math.random().toString(36).slice(2,9);}
+function findFlight(id){return state.flights.find(f=>f.id===id);}
+function findSbRow(id){return state.sbRows.find(r=>r.id===id);}
+function findCity(id){return state.cities.find(c=>c.id===id);}
+function findDay(id){for(const c of state.cities)for(const d of c.days)if(d.id===id)return d;}
+function findSlot(id){for(const c of state.cities)for(const d of c.days)for(const s of d.slots)if(s.id===id)return s;}
+function findSlotCtx(id){for(let ci=0;ci<state.cities.length;ci++){const c=state.cities[ci];for(let di=0;di<c.days.length;di++){const d=c.days[di];for(let si=0;si<d.slots.length;si++){if(d.slots[si].id===id)return{ci,di,si,slot:d.slots[si]}}}}return null;}
+
+/* ── CRUD ── */
+function addFlight(){state.flights.push({id:uid(),date:'New date',route:'A → B',info:'Airline · duration',badge:'',docs:[]});renderFlights();markUnsaved();}
+function deleteFlight(id){state.flights=state.flights.filter(f=>f.id!==id);renderFlights();markUnsaved();}
+function addSbRow(){state.sbRows.push({id:uid(),date:'New date',city:'New city',detail:'Details',status:'need',docs:[]});renderSbTable();markUnsaved();}
+function deleteSbRow(id){state.sbRows=state.sbRows.filter(r=>r.id!==id);renderSbTable();markUnsaved();}
+function cyclePip(id){if(!editMode)return;const order=['ok','warn','need','info'];const r=findSbRow(id);if(!r)return;r.status=order[(order.indexOf(r.status)+1)%order.length];renderSbTable();renderCities();markUnsaved();}
+function addCity(){const name=prompt('Destination name:')||'New City';state.cities.push({id:uid(),name,sub:'Country · dates · N nights',nights:2,colorIdx:state.cities.length%CITY_COLORS.length,days:[{id:uid(),date:'Day 1',title:'Arrive & explore',where:'',night:name,docs:[],slots:[{id:uid(),time:'Morning',name:'Arrive',note:'Check in and explore.',address:'',tags:[],docs:[]}]}]});renderCities();renderDayNav();renderCalendar();markUnsaved();}
+function deleteCity(id){if(!confirm('Remove this destination?'))return;state.cities=state.cities.filter(c=>c.id!==id);renderCities();renderDayNav();renderCalendar();renderMap();markUnsaved();}
+function addDay(cityId){const c=findCity(cityId);if(!c)return;c.days.push({id:uid(),date:'New date',title:'New day',where:'',night:c.name,docs:[],slots:[{id:uid(),time:'Morning',name:'Activity',note:'Description.',address:'',tags:[],docs:[]}]});renderCities();renderDayNav();renderCalendar();markUnsaved();}
+function deleteDay(cityId,dayId){const c=findCity(cityId);if(!c)return;if(!confirm('Remove this day?'))return;c.days=c.days.filter(d=>d.id!==dayId);renderCities();renderDayNav();renderCalendar();renderMap();markUnsaved();}
+function moveDayUp(cityId,dayId){const c=findCity(cityId);if(!c)return;const i=c.days.findIndex(d=>d.id===dayId);if(i<=0)return;[c.days[i-1],c.days[i]]=[c.days[i],c.days[i-1]];renderCities();renderDayNav();markUnsaved();}
+function moveDayDown(cityId,dayId){const c=findCity(cityId);if(!c)return;const i=c.days.findIndex(d=>d.id===dayId);if(i<0||i>=c.days.length-1)return;[c.days[i],c.days[i+1]]=[c.days[i+1],c.days[i]];renderCities();renderDayNav();markUnsaved();}
+function addSlot(dayId){const d=findDay(dayId);if(!d)return;d.slots.push({id:uid(),time:'Time',name:'Activity',note:'Notes.',address:'',tags:[],docs:[]});renderCities();markUnsaved();}
+function deleteSlot(slotId){for(const c of state.cities)for(const d of c.days){const i=d.slots.findIndex(s=>s.id===slotId);if(i>=0){d.slots.splice(i,1);renderCities();renderMap();markUnsaved();return;}}}
+function moveSlotUp(slotId){for(const c of state.cities)for(const d of c.days){const i=d.slots.findIndex(s=>s.id===slotId);if(i>0){[d.slots[i-1],d.slots[i]]=[d.slots[i],d.slots[i-1]];renderCities();markUnsaved();return;}}}
+function moveSlotDown(slotId){for(const c of state.cities)for(const d of c.days){const i=d.slots.findIndex(s=>s.id===slotId);if(i>=0&&i<d.slots.length-1){[d.slots[i],d.slots[i+1]]=[d.slots[i+1],d.slots[i]];renderCities();markUnsaved();return;}}}
+
+/* ── MULTI-UPLOAD QUEUE ── */
+function queueItem(label,link,image){const item={qid:uid(),label,link,image};_queue.push(item);renderQueue();return item;}
+function renderQueue(){
+  const c=document.getElementById('doc-queue');if(!c)return;
+  c.innerHTML=_queue.map((item,i)=>`
+    <div class="dq-item" id="dqi-${item.qid}">
+      <div class="dq-thumb" id="dqthumb-${item.qid}">
+        ${item.image?`<img src="${item.image}" alt="">`:(item.link?'🔗':'📄')}
+      </div>
+      <div class="dq-fields">
+        <input type="text" placeholder="Label — e.g. Hotel confirmation, Colosseum ticket…"
+          value="${item.label.replace(/"/g,'&quot;')}"
+          oninput="_queue[${i}].label=this.value">
+        <input type="url" placeholder="Booking link (optional)"
+          value="${(item.link||'').replace(/"/g,'&quot;')}"
+          oninput="_queue[${i}].link=this.value">
+      </div>
+      <button class="dq-del" onclick="removeQueueItem('${item.qid}')">✕</button>
+    </div>`).join('');
+  const dz=document.getElementById('doc-dz');
+  if(dz)dz.classList.toggle('compact',_queue.length>0);
+  const btn=document.getElementById('doc-save-btn');
+  if(btn)btn.textContent=_queue.length>1?`Save all (${_queue.length})`:'Save';
+}
+function removeQueueItem(qid){_queue=_queue.filter(i=>i.qid!==qid);renderQueue();}
+function addBlankItem(){queueItem('','',null);setTimeout(()=>{const l=document.querySelector('.dq-item:last-child input');if(l)l.focus();},50);}
+function handleFileInput(input){
+  Array.from(input.files).forEach(file=>{
+    const item=queueItem(file.name.replace(/\.[^.]+$/,'').replace(/[-_]/g,' '),'',null);
+    const reader=new FileReader();
+    reader.onload=e=>{
+      item.image=e.target.result;
+      const thumb=document.getElementById('dqthumb-'+item.qid);
+      if(thumb)thumb.innerHTML=`<img src="${e.target.result}" alt="">`;
+      const btn=document.getElementById('doc-save-btn');
+      if(btn)btn.textContent=_queue.length>1?`Save all (${_queue.length})`:'Save';
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value='';
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  const dz=document.getElementById('doc-dz');
+  if(dz){
+    dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover');});
+    dz.addEventListener('dragleave',()=>dz.classList.remove('dragover'));
+    dz.addEventListener('drop',e=>{
+      e.preventDefault();dz.classList.remove('dragover');
+      const files=Array.from(e.dataTransfer.files).filter(f=>f.type.startsWith('image/'));
+      if(files.length){const inp=document.getElementById('doc-file-in');const dt=new DataTransfer();files.forEach(f=>dt.items.add(f));inp.files=dt.files;handleFileInput(inp);}
+    });
+  }
+});
+
+/* ── DOC MANAGEMENT ── */
+function getDocArr(type,targetId){
+  if(type==='flight')return findFlight(targetId)?.docs;
+  if(type==='sbRow')return findSbRow(targetId)?.docs;
+  if(type==='slot')return findSlot(targetId)?.docs;
+  if(type==='day'){const d=findDay(targetId);if(d){if(!d.docs)d.docs=[];return d.docs;}}
+  return null;
+}
+function openDocModal(type,targetId){
+  _docCtx={type,targetId};_queue=[];renderQueue();
+  const titles={flight:'✈ Add flight bookings',sbRow:'📋 Add bookings to this leg',slot:'📎 Add bookings, tickets & QR codes',day:'🏨 Add hotel / accommodation bookings'};
+  document.getElementById('doc-modal-title').textContent=titles[type]||'Add bookings';
+  document.getElementById('doc-modal').classList.add('open');
+}
+function saveDoc(){
+  if(_queue.length===0){closeDocModal();return;}
+  const arr=getDocArr(_docCtx.type,_docCtx.targetId);
+  if(!arr){closeDocModal();return;}
+  _queue.forEach(item=>{arr.push({id:uid(),label:item.label.trim()||'Booking',link:item.link.trim()||null,image:item.image||null});});
+  closeDocModal();markUnsaved();saveState();renderAll();
+}
+function closeDocModal(){document.getElementById('doc-modal').classList.remove('open');_docCtx=null;_queue=[];renderQueue();}
+function removeDoc(type,targetId,idx){
+  const arr=getDocArr(type,targetId);if(!arr)return;
+  arr.splice(idx,1);saveState();renderAll();
+}
+function viewDoc(type,targetId,idx){
+  const arr=getDocArr(type,targetId);if(!arr)return;
+  const doc=arr[idx];if(!doc)return;
+  viewDocDirect(doc);
+}
+function viewDocDirect(doc){
+  document.getElementById('dv-title').textContent=doc.label;
+  const img=document.getElementById('doc-preview-img');
+  const lnk=document.getElementById('doc-preview-link');
+  if(doc.image){img.src=doc.image;img.style.display='block';}else{img.style.display='none';}
+  if(doc.link){lnk.href=doc.link;lnk.style.display='inline-flex';}else{lnk.style.display='none';}
+  document.getElementById('doc-preview-modal').classList.add('open');
+}
+function closeDocViewer(){document.getElementById('doc-preview-modal').classList.remove('open');}
+
+/* ── TAGS ── */
+function openTagModal(ci,di,si,ti){if(!editMode)return;_tagCtx={ci,di,si,ti};const t=state.cities[ci].days[di].slots[si].tags[ti];document.getElementById('tm-text').value=t.text;document.getElementById('tm-type').value=t.type;document.getElementById('tag-modal').classList.add('open');}
+function addTagTo(slotId){const ctx=findSlotCtx(slotId);if(!ctx)return;ctx.slot.tags.push({type:'tip',text:'New tag'});const ti=ctx.slot.tags.length-1;markUnsaved();renderCities();setTimeout(()=>openTagModal(ctx.ci,ctx.di,ctx.si,ti),50);}
+function saveTag(){if(!_tagCtx)return;const{ci,di,si,ti}=_tagCtx;state.cities[ci].days[di].slots[si].tags[ti].text=document.getElementById('tm-text').value;state.cities[ci].days[di].slots[si].tags[ti].type=document.getElementById('tm-type').value;closeTagModal();markUnsaved();renderCities();}
+function deleteTag(){if(!_tagCtx)return;const{ci,di,si,ti}=_tagCtx;state.cities[ci].days[di].slots[si].tags.splice(ti,1);closeTagModal();markUnsaved();renderCities();}
+function closeTagModal(){document.getElementById('tag-modal').classList.remove('open');_tagCtx=null;}
+
+['doc-modal','doc-preview-modal','tag-modal'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',e=>{if(e.target.id===id){closeDocModal();closeDocViewer();closeTagModal();}});
+});
+
+/* ── DAY ACCORDION ── */
+function toggleDay(el){if(editMode&&window.getSelection().toString())return;el.classList.toggle('open');}
+
+/* ── EXPORT HTML ── */
+function exportHTML(){
+  saveState();
+  const html=document.documentElement.outerHTML;
+  const patched=html.replace(/const DEFAULT=\{[\s\S]*?\};\s*\/\* ── STATE/,`const DEFAULT=${JSON.stringify(state)};\n/* ── STATE`);
+  const blob=new Blob(['<!DOCTYPE html>\n'+patched],{type:'text/html'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='europe-2026.html';a.click();
+}
+
+/* ── EDIT BUTTONS VISIBILITY ── */
+function applyEditBtns(){
+  document.querySelectorAll('[id^="addtag-"]').forEach(el=>{el.style.display=editMode?'inline-block':'none';});
+  document.querySelectorAll('.slot-attach-btn').forEach(el=>{
+    el.style.display=editMode?'inline-flex':(el.classList.contains('has-docs')?'none':'inline-flex');
+  });
+}
+
+/* ── AUTO-SAVE on blur ── */
+document.addEventListener('focusout',e=>{if(editMode&&e.target.isContentEditable)saveState();});
+
+/* ── INTERSECTION OBSERVER ── */
+const obsv=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible');});},{threshold:.05});
+
+/* ── SCROLL-SPY + BACK TO TOP ── */
+window.addEventListener('scroll',()=>{
+  // Back-to-top button
+  const fab=document.getElementById('back-to-top');
+  if(fab){
+    if(window.scrollY>320)fab.classList.add('visible');
+    else fab.classList.remove('visible');
+  }
+},{ passive:true });
+
+/* ── INIT ── */
+loadState();
+renderAll();
+updateSaveIndicator();
+</script>
+</body>
+</html>
