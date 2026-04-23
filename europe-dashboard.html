@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Europe 2026 — Travel Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+/* ════════════════════════════════════════════
+   VARIABLES & RESET
+════════════════════════════════════════════ */
+:root {
+  --ink: #1a1714; --ink2: #2e2a26; --ink3: #3d3530;
+  --muted: #7a6f66; --muted2: #a09890; --muted3: #c8beb4;
+  --parchment: #faf7f2; --parchment2: #f2ede4; --parchment3: #e8e0d4;
+  --border: rgba(26,23,20,0.09); --border2: rgba(26,23,20,0.16);
+  --gold: #b8892a; --gold2: #d4a843; --gold-bg: rgba(184,137,42,0.08);
+  --blue: #1d4ed8; --blue-bg: rgba(29,78,216,0.07); --blue-border: rgba(29,78,216,0.2);
+  --green: #16a34a; --green-bg: rgba(22,163,74,0.08);
+  --red: #dc2626; --red-bg: rgba(220,38,38,0.07);
+  --amber: #d97706; --amber-bg: rgba(217,119,6,0.08);
+  --london: #2e6644; --matera: #7a4f2e; --rome: #9c2f2f;
+  --sicily: #b86b1a; --istanbul: #1a5c7a;
+  --save-flash: rgba(22,163,74,0.15);
+  --radius: 8px; --radius-lg: 12px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { font-family: 'DM Sans', sans-serif; background: var(--parchment); color: var(--ink); font-size: 15px; line-height: 1.6; }
+button { font-family: inherit; cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+
+/* ════════════════════════════════════════════
+   SAVE INDICATOR
+════════════════════════════════════════════ */
+#save-toast {
+  position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+  background: var(--ink2); color: var(--parchment);
+  font-size: 12px; padding: 8px 16px; border-radius: 20px;
+  display: flex; align-items: center; gap: 8px;
+  opacity: 0; transform: translateY(8px);
+  transition: opacity 0.3s, transform 0.3s;
+  pointer-events: none;
+}
+#save-toast.show { opacity: 1; transform: translateY(0); }
+#save-toast .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+
+/* ════════════════════════════════════════════
+   TOOLBAR
+════════════════════════════════════════════ */
+#toolbar {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  padding: 9px 20px;
+  background: rgba(250,247,242,0.96); backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+}
+.tb-logo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 16px; font-weight: 400; color: var(--gold);
+  margin-right: 6px; white-space: nowrap; letter-spacing: 0.3px;
+}
+.tb-sep { width: 1px; height: 18px; background: var(--border2); flex-shrink: 0; }
+.btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 11px; border-radius: 6px;
+  font-size: 12px; font-weight: 500; letter-spacing: 0.2px;
+  border: 1px solid var(--border2); background: white; color: var(--ink);
+  transition: all 0.15s; white-space: nowrap;
+}
+.btn:hover { background: var(--parchment2); border-color: var(--muted2); }
+.btn.blue  { background: var(--blue); color: white; border-color: var(--blue); }
+.btn.blue:hover { background: #1e40af; }
+.btn.green { background: var(--green); color: white; border-color: var(--green); }
+.btn.red   { background: var(--red-bg); color: var(--red); border-color: rgba(220,38,38,0.25); }
+.btn svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.tb-status { margin-left: auto; font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.tb-status .indicator { width: 7px; height: 7px; border-radius: 50%; }
+.indicator.saved { background: var(--green); }
+.indicator.unsaved { background: var(--amber); }
+
+/* ════════════════════════════════════════════
+   HERO
+════════════════════════════════════════════ */
+.hero {
+  background: var(--ink2); position: relative; overflow: hidden;
+  padding: 64px 60px 60px;
+}
+.hero-grain {
+  position: absolute; inset: 0; opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px;
+  pointer-events: none;
+}
+.hero-glow {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 65% 70% at 15% 60%, rgba(184,137,42,0.14) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 60% at 85% 25%, rgba(26,92,122,0.18) 0%, transparent 55%),
+    radial-gradient(ellipse 40% 50% at 55% 85%, rgba(156,47,47,0.12) 0%, transparent 50%);
+}
+.hero-content { position: relative; z-index: 1; max-width: 820px; }
+.hero-eyebrow {
+  font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--gold2); margin-bottom: 20px;
+  display: flex; align-items: center; gap: 12px;
+}
+.hero-eyebrow::before { content:''; display:block; width:36px; height:1px; background:var(--gold); }
+[data-field] {
+  border-radius: 4px;
+  transition: outline 0.15s, background 0.15s;
+  outline: 2px solid transparent;
+}
+body.editing [data-field] { cursor: text; }
+body.editing [data-field]:hover { outline: 2px solid rgba(29,78,216,0.35); background: rgba(29,78,216,0.06); }
+body.editing [data-field]:focus { outline: 2px solid var(--blue); background: rgba(29,78,216,0.08); }
+.hero-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(44px, 6.5vw, 84px);
+  font-weight: 300; line-height: 0.96; letter-spacing: -0.5px;
+  color: rgba(250,247,242,0.95); margin-bottom: 32px;
+  display: block;
+}
+.hero-title em { font-style: italic; color: var(--gold2); }
+.hero-meta { display: flex; gap: 28px; flex-wrap: wrap; margin-bottom: 36px; }
+.hm-item { display: flex; flex-direction: column; gap: 3px; }
+.hm-label { font-size: 9px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--muted); }
+.hm-val { font-size: 13.5px; color: rgba(250,247,242,0.8); font-weight: 300; }
+
+/* Flights */
+.flights-list { display: flex; flex-direction: column; gap: 6px; max-width: 600px; }
+.flight-card {
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(250,247,242,0.055); border: 1px solid rgba(250,247,242,0.1);
+  border-radius: 7px; padding: 8px 14px; position: relative;
+  transition: border-color 0.15s;
+}
+.flight-card:hover { border-color: rgba(250,247,242,0.18); }
+.f-date { font-size: 10.5px; color: var(--muted); min-width: 48px; }
+.f-route { font-family: 'Cormorant Garamond', serif; font-size: 16px; color: rgba(250,247,242,0.9); min-width: 108px; }
+.f-divider { flex: 1; height: 1px; background: rgba(255,255,255,0.08); }
+.f-info { font-size: 10px; color: var(--muted); text-align: right; line-height: 1.5; white-space: pre-line; }
+.f-badge {
+  font-size: 9px; letter-spacing: 0.5px; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 3px; white-space: nowrap;
+  background: rgba(220,38,38,0.2); color: #fca5a5; border: 1px solid rgba(252,165,165,0.2);
+}
+/* Booking attachment on flights */
+.f-booking { display: flex; align-items: center; gap: 6px; margin-left: 4px; }
+.attach-btn {
+  font-size: 9.5px; padding: 2px 8px; border-radius: 4px;
+  border: 1px dashed rgba(250,247,242,0.2); background: rgba(250,247,242,0.04);
+  color: rgba(250,247,242,0.4); display: none; white-space: nowrap;
+}
+body.editing .attach-btn { display: inline-flex; align-items: center; gap: 4px; }
+body.editing .attach-btn:hover { background: rgba(250,247,242,0.1); color: rgba(250,247,242,0.8); }
+.booking-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 9.5px; padding: 2px 8px; border-radius: 4px;
+  background: rgba(22,163,74,0.15); color: #86efac;
+  border: 1px solid rgba(134,239,172,0.2); cursor: pointer;
+}
+.booking-chip:hover { background: rgba(22,163,74,0.25); }
+
+/* ════════════════════════════════════════════
+   SECTION WRAPPER
+════════════════════════════════════════════ */
+.wrap { max-width: 980px; margin: 0 auto; padding: 60px 28px; }
+.wrap + .wrap { padding-top: 0; }
+.sec-label {
+  font-size: 9.5px; letter-spacing: 2.5px; text-transform: uppercase;
+  color: var(--gold); display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+}
+.sec-label::before { content:''; display:block; width:28px; height:1px; background:var(--gold); }
+
+/* ════════════════════════════════════════════
+   STATUS BOARD
+════════════════════════════════════════════ */
+.sb { width: 100%; border-collapse: collapse; margin-top: 16px; }
+.sb th { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); font-weight: 400; padding: 0 0 10px; text-align: left; border-bottom: 1px solid var(--border2); }
+.sb td { padding: 11px 0; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.sb tr:last-child td { border-bottom: none; }
+.sb-date { font-size: 11.5px; color: var(--muted); padding-right: 20px; white-space: nowrap; }
+.sb-city { font-size: 13px; font-weight: 500; padding-right: 16px; white-space: nowrap; }
+.sb-detail { font-size: 12px; color: var(--muted); }
+.sb-right { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.pip {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 9.5px; letter-spacing: 0.3px; text-transform: uppercase; font-weight: 500;
+  padding: 3px 9px; border-radius: 20px; white-space: nowrap; cursor: pointer;
+  transition: opacity 0.15s;
+}
+.pip:hover { opacity: 0.8; }
+.pip.ok   { background: rgba(22,163,74,0.1);   color: #15803d; }
+.pip.warn { background: rgba(217,119,6,0.1);    color: #92400e; }
+.pip.need { background: rgba(220,38,38,0.1);    color: #b91c1c; }
+.pip.info { background: rgba(29,78,216,0.09);   color: #1d4ed8; }
+/* mini booking attach on table rows */
+.row-attach { display: none; }
+body.editing .row-attach { display: inline-flex; }
+.row-attach-btn {
+  font-size: 9px; padding: 2px 7px; border-radius: 4px; border: 1px dashed var(--border2);
+  background: transparent; color: var(--muted2); white-space: nowrap;
+}
+.row-attach-btn:hover { border-color: var(--blue); color: var(--blue); }
+
+/* ════════════════════════════════════════════
+   CITY SECTION
+════════════════════════════════════════════ */
+.city-sec { max-width: 980px; margin: 0 auto; padding: 32px 28px 56px; position: relative; }
+.city-hdr {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 16px; padding-bottom: 22px; margin-bottom: 26px;
+  border-bottom: 1px solid var(--border);
+}
+.city-name-wrap { flex: 1; }
+.city-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 50px; font-weight: 300; line-height: 1; letter-spacing: -0.5px;
+}
+.city-sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.city-nights-num {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 50px; font-weight: 300; line-height: 1; text-align: right;
+}
+.city-nights-lbl { font-size: 9.5px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); text-align: right; }
+
+/* ════════════════════════════════════════════
+   DAY CARD
+════════════════════════════════════════════ */
+.day { border-bottom: 1px solid var(--border); position: relative; }
+.day-hdr {
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 17px 0; cursor: pointer; user-select: none;
+}
+.day-hdr:hover .day-title { color: var(--city-col, var(--gold)); }
+.day-n { font-family: 'Cormorant Garamond', serif; font-size: 12.5px; color: var(--muted); min-width: 24px; padding-top: 3px; text-align: right; }
+.day-meta { flex: 1; min-width: 0; }
+.day-date { font-size: 10.5px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+.day-title { font-family: 'Cormorant Garamond', serif; font-size: 21px; font-weight: 400; line-height: 1.2; color: var(--ink); transition: color 0.2s; }
+.day-where { font-size: 11px; color: var(--muted2); margin-top: 2px; }
+.night-badge {
+  flex-shrink: 0; font-size: 10.5px; color: var(--muted);
+  background: var(--parchment2); border: 1px solid var(--border);
+  padding: 3px 10px; border-radius: 20px; white-space: nowrap; margin-top: 2px;
+}
+.chev { width: 18px; height: 18px; flex-shrink: 0; padding-top: 5px; color: var(--muted3); transition: transform 0.25s; }
+.chev svg { width: 11px; height: 7px; fill: none; stroke: currentColor; display: block; }
+.day.open .chev { transform: rotate(180deg); }
+.day-body { max-height: 0; overflow: hidden; transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1); }
+.day.open .day-body { max-height: 4000px; }
+.day-body-in { padding: 0 0 20px 38px; }
+
+/* ════════════════════════════════════════════
+   SLOT
+════════════════════════════════════════════ */
+.slot { display: grid; grid-template-columns: 88px 1fr; gap: 12px; padding: 12px 0; border-top: 1px solid var(--border); position: relative; }
+.slot:first-child { border-top: none; }
+.slot-t { font-size: 10.5px; color: var(--muted); padding-top: 2px; }
+.slot-name { font-size: 14px; font-weight: 500; margin-bottom: 3px; }
+.slot-note { font-size: 13px; color: var(--muted); line-height: 1.55; }
+.tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; align-items: center; }
+.tag { font-size: 11px; padding: 3px 10px; border-radius: 20px; }
+/* booking docs section inside a slot */
+.slot-docs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.doc-card {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--parchment2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 8px 12px;
+  font-size: 11.5px; color: var(--ink3); cursor: pointer;
+  transition: border-color 0.15s; max-width: 260px;
+}
+.doc-card:hover { border-color: var(--border2); }
+.doc-icon { font-size: 16px; flex-shrink: 0; }
+.doc-info { min-width: 0; }
+.doc-label { font-weight: 500; font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+.doc-type { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.doc-del { display: none; font-size: 10px; color: var(--red); padding: 2px; margin-left: auto; flex-shrink: 0; }
+body.editing .doc-del { display: block; }
+
+/* ════════════════════════════════════════════
+   EDIT-MODE CONTROLS
+════════════════════════════════════════════ */
+.edit-bar { display: none; gap: 6px; padding: 8px 0 4px; flex-wrap: wrap; }
+body.editing .edit-bar { display: flex; }
+.sm-btn {
+  font-size: 11px; padding: 4px 10px; border-radius: 5px;
+  border: 1px solid var(--border2); background: white; color: var(--muted);
+  transition: all 0.12s;
+}
+.sm-btn:hover { border-color: var(--muted2); color: var(--ink); }
+.sm-btn.danger { color: var(--red); border-color: rgba(220,38,38,0.25); background: var(--red-bg); }
+.add-strip {
+  display: none; width: 100%; padding: 9px; margin-top: 6px;
+  border: 1px dashed var(--blue-border); border-radius: 6px;
+  background: var(--blue-bg); color: var(--blue);
+  font-size: 12px; font-weight: 500; text-align: center;
+}
+body.editing .add-strip { display: block; }
+/* city delete btn */
+.city-del {
+  display: none; position: absolute; top: 32px; right: 28px;
+  font-size: 11px; padding: 4px 10px; border-radius: 5px;
+  border: 1px solid rgba(220,38,38,0.25); background: var(--red-bg); color: var(--red);
+}
+body.editing .city-del { display: block; }
+/* slot/day hover reveals */
+.day-actions, .slot-actions { display: none; position: absolute; right: 0; top: 14px; gap: 5px; opacity: 0; transition: opacity 0.15s; }
+.slot-actions { top: 10px; }
+body.editing .day:hover .day-actions,
+body.editing .slot:hover .slot-actions { display: flex; opacity: 1; }
+/* add city */
+#add-city-wrap {
+  display: none; max-width: 980px; margin: 0 auto 60px;
+  padding: 0 28px;
+}
+body.editing #add-city-wrap { display: block; }
+
+/* ════════════════════════════════════════════
+   MODALS (shared)
+════════════════════════════════════════════ */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 500;
+  background: rgba(26,23,20,0.55); backdrop-filter: blur(5px);
+  align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--parchment); border-radius: var(--radius-lg);
+  padding: 28px; width: 420px; max-width: 94vw; max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.25);
+}
+.modal h3 { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 400; margin-bottom: 20px; }
+.field { margin-bottom: 14px; }
+.field label { display: block; font-size: 10.5px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+.field input, .field select, .field textarea {
+  width: 100%; padding: 9px 11px; border: 1px solid var(--border2);
+  border-radius: 6px; font-size: 13px; font-family: inherit; color: var(--ink);
+  background: white; outline: none; transition: border-color 0.15s;
+}
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--blue); }
+.field textarea { resize: vertical; min-height: 72px; }
+.modal-btns { display: flex; gap: 8px; margin-top: 20px; justify-content: flex-end; }
+.modal-btns button { padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; border: 1px solid; }
+
+/* Doc preview modal */
+#doc-preview-modal .modal { text-align: center; max-width: 560px; }
+#doc-preview-img { max-width: 100%; max-height: 65vh; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 12px; }
+#doc-preview-link { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--blue); padding: 8px 16px; border: 1px solid var(--blue-border); border-radius: 6px; background: var(--blue-bg); }
+
+/* ════════════════════════════════════════════
+   UPLOAD DROP ZONE
+════════════════════════════════════════════ */
+.drop-zone {
+  border: 2px dashed var(--border2); border-radius: 8px;
+  padding: 24px; text-align: center; font-size: 13px; color: var(--muted);
+  cursor: pointer; transition: all 0.15s; position: relative;
+}
+.drop-zone:hover, .drop-zone.dragover { border-color: var(--blue); background: var(--blue-bg); color: var(--blue); }
+.drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.dz-icon { font-size: 24px; margin-bottom: 8px; }
+.dz-label { font-weight: 500; }
+.dz-sub { font-size: 11.5px; margin-top: 4px; }
+.preview-thumb {
+  width: 80px; height: 60px; object-fit: cover;
+  border-radius: 5px; border: 1px solid var(--border);
+  margin-top: 10px;
+}
+
+/* ════════════════════════════════════════════
+   FOOTER
+════════════════════════════════════════════ */
+footer {
+  text-align: center; padding: 30px 28px 50px;
+  border-top: 1px solid var(--border);
+  font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted);
+}
+
+/* ════════════════════════════════════════════
+   ANIMATION & RESPONSIVE
+════════════════════════════════════════════ */
+.fade-in { opacity: 0; transform: translateY(10px); transition: opacity 0.4s, transform 0.4s; }
+.fade-in.visible { opacity: 1; transform: none; }
+@media(max-width:640px) {
+  .hero { padding: 44px 18px 44px; }
+  .hero-title { font-size: 40px; }
+  .city-sec, .wrap { padding: 28px 16px 48px; }
+  .city-name, .city-nights-num { font-size: 38px; }
+  .slot { grid-template-columns: 68px 1fr; }
+  .day-body-in { padding-left: 10px; }
+  .sb-detail { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ════ SAVE TOAST ════ -->
+<div id="save-toast"><span class="dot"></span> Saved to browser</div>
+
+<!-- ════ TOOLBAR ════ -->
+<div id="toolbar">
+  <span class="tb-logo">✈ Europe 2026</span>
+  <div class="tb-sep"></div>
+  <button class="btn" id="edit-btn" onclick="toggleEdit()">
+    <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    Edit
+  </button>
+  <button class="btn" onclick="exportHTML()" title="Download as standalone HTML file">
+    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+    Export HTML
+  </button>
+  <button class="btn" onclick="resetAll()" title="Clear all saved edits and restore defaults" style="color:var(--muted)">
+    <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+    Reset
+  </button>
+  <div class="tb-sep"></div>
+  <div class="tb-status" id="tb-status">
+    <span class="indicator saved" id="save-dot"></span>
+    <span id="save-label">All saved</span>
+  </div>
+</div>
+
+<!-- ════ HERO ════ -->
+<section class="hero" id="hero">
+  <div class="hero-grain"></div>
+  <div class="hero-glow"></div>
+  <div class="hero-content">
+    <div class="hero-eyebrow">
+      <span data-field="eyebrow">Aug 20 – Sep 7, 2026 · 18 days</span>
+    </div>
+    <div class="hero-title" data-field="title">London · Matera<br>Rome · Sicily<br><em>Istanbul</em></div>
+    <div class="hero-meta">
+      <div class="hm-item"><span class="hm-label">Departs</span><span class="hm-val" data-field="departs">Aug 20 · EWR</span></div>
+      <div class="hm-item"><span class="hm-label">Returns</span><span class="hm-val" data-field="returns">Sep 7 · EWR</span></div>
+      <div class="hm-item"><span class="hm-label">Nights</span><span class="hm-val" data-field="nights">18</span></div>
+      <div class="hm-item"><span class="hm-label">Countries</span><span class="hm-val" data-field="countries">4</span></div>
+    </div>
+    <div class="flights-list" id="flights-list"></div>
+    <div class="edit-bar" style="margin-top:10px">
+      <button class="sm-btn" onclick="addFlight()" style="color:rgba(250,247,242,0.6);border-color:rgba(250,247,242,0.15);background:rgba(250,247,242,0.05)">+ Add flight</button>
+    </div>
+  </div>
+</section>
+
+<!-- ════ STATUS BOARD ════ -->
+<div class="wrap" id="overview">
+  <div class="sec-label">Full trip at a glance</div>
+  <table class="sb" id="sb-table">
+    <thead><tr><th>Dates</th><th>City / Leg</th><th>Details</th><th style="text-align:right">Status</th></tr></thead>
+    <tbody id="sb-body"></tbody>
+  </table>
+  <div class="edit-bar"><button class="sm-btn" onclick="addSbRow()">+ Add row</button></div>
+</div>
+
+<!-- ════ CITY SECTIONS ════ -->
+<div id="cities"></div>
+<div id="add-city-wrap">
+  <button class="add-strip" onclick="addCity()">+ Add destination</button>
+</div>
+
+<!-- ════ FOOTER ════ -->
+<footer><span data-field="footer">London · Matera · Rome · Sicily · Istanbul · Aug 20 – Sep 7, 2026</span></footer>
+
+<!-- ════════════════════════════════
+     MODALS
+════════════════════════════════ -->
+
+<!-- BOOKING / DOC ATTACH MODAL -->
+<div class="modal-overlay" id="doc-modal">
+  <div class="modal">
+    <h3 id="doc-modal-title">Add booking</h3>
+    <div class="field">
+      <label>Label (e.g. "Hotel Manfredi confirmation")</label>
+      <input type="text" id="doc-label-in" placeholder="Booking confirmation, QR code, ticket...">
+    </div>
+    <div class="field">
+      <label>Booking link (optional)</label>
+      <input type="url" id="doc-link-in" placeholder="https://booking.com/...">
+    </div>
+    <div class="field">
+      <label>Upload image / QR code / PDF screenshot (optional)</label>
+      <div class="drop-zone" id="doc-dz">
+        <input type="file" id="doc-file-in" accept="image/*,.pdf" onchange="previewFile(this)">
+        <div class="dz-icon">📎</div>
+        <div class="dz-label">Click or drag file here</div>
+        <div class="dz-sub">PNG, JPG, screenshot, QR code — stored locally in browser</div>
+        <img id="doc-preview-thumb" class="preview-thumb" style="display:none">
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button onclick="closeDocModal()" style="background:white;color:var(--muted);border-color:var(--border2)">Cancel</button>
+      <button onclick="saveDoc()" class="btn blue" style="padding:8px 16px">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- DOC VIEWER MODAL -->
+<div class="modal-overlay" id="doc-preview-modal">
+  <div class="modal" style="text-align:center">
+    <h3 id="dv-title" style="margin-bottom:16px"></h3>
+    <img id="doc-preview-img" style="display:none">
+    <a id="doc-preview-link" target="_blank" style="display:none"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg> Open booking link</a>
+    <div style="margin-top:16px">
+      <button onclick="closeDocViewer()" class="btn">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- TAG MODAL -->
+<div class="modal-overlay" id="tag-modal">
+  <div class="modal" style="max-width:360px">
+    <h3>Edit tag</h3>
+    <div class="field"><label>Text</label><input type="text" id="tm-text"></div>
+    <div class="field">
+      <label>Type</label>
+      <select id="tm-type">
+        <option value="tip">💡 Tip</option>
+        <option value="food">🍽 Food / restaurant</option>
+        <option value="flight">✈ Flight / transport</option>
+        <option value="warn">⚠ Warning</option>
+        <option value="drive">🚗 Drive</option>
+        <option value="vibe">✨ Vibe</option>
+      </select>
+    </div>
+    <div class="modal-btns">
+      <button onclick="deleteTag()" style="background:var(--red-bg);color:var(--red);border-color:rgba(220,38,38,0.25)">Delete</button>
+      <button onclick="closeTagModal()" style="background:white;color:var(--muted);border-color:var(--border2)">Cancel</button>
+      <button onclick="saveTag()" class="btn blue" style="padding:8px 16px">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ════════════════════════════════════
+   STORAGE KEY
+════════════════════════════════════ */
+const SK = 'eu2026_v3';
+
+/* ════════════════════════════════════
+   TAG STYLES
+════════════════════════════════════ */
+const TS = {
+  tip:    { bg:'rgba(29,78,216,0.08)',  c:'#1d4ed8', b:'rgba(29,78,216,0.2)'  },
+  food:   { bg:'rgba(180,107,26,0.09)', c:'#92400e', b:'rgba(180,107,26,0.2)' },
+  flight: { bg:'rgba(22,163,74,0.08)',  c:'#15803d', b:'rgba(22,163,74,0.2)'  },
+  warn:   { bg:'rgba(220,38,38,0.08)',  c:'#b91c1c', b:'rgba(220,38,38,0.2)'  },
+  drive:  { bg:'rgba(120,79,46,0.08)',  c:'#7c2d12', b:'rgba(120,79,46,0.2)'  },
+  vibe:   { bg:'rgba(184,137,42,0.09)', c:'#92400e', b:'rgba(184,137,42,0.2)' },
+};
+function tagStyle(t){ const s=TS[t]||TS.tip; return `background:${s.bg};color:${s.c};border:1px solid ${s.b}`; }
+
+const PILL_MAP = { ok:{cls:'ok',lbl:'✓ Booked'}, warn:{cls:'warn',lbl:'⚠ Check'}, need:{cls:'need',lbl:'Book needed'}, info:{cls:'info',lbl:'Action needed'} };
+const CITY_COLORS = ['#2e6644','#9c2f2f','#1a5c7a','#7a4f2e','#b86b1a','#7c3aed','#0891b2','#be185d'];
+
+/* ════════════════════════════════════
+   DEFAULT DATA
+════════════════════════════════════ */
+const DEFAULT = {
+  hero: { eyebrow:'Aug 20 – Sep 7, 2026 · 18 days', title:'London · Matera<br>Rome · Sicily<br><em>Istanbul</em>', departs:'Aug 20 · EWR', returns:'Sep 7 · EWR', nights:'18', countries:'4', footer:'London · Matera · Rome · Sicily · Istanbul · Aug 20 – Sep 7, 2026' },
+  flights: [
+    { id:'f1', date:'Aug 20', route:'EWR → LHR', info:'United/Lufthansa · 7h10m\n7:05 PM → 7:15 AM+1', badge:'', docs:[] },
+    { id:'f2', date:'Aug 25', route:'LGW → BRI', info:'easyJet · 2h55m\n7:05 AM → 11:00 AM', badge:'Gatwick ⚠', docs:[] },
+    { id:'f3', date:'Aug 30', route:'FCO → CTA', info:'ITA Airways · 1h20m\n10:40 AM → 12:00 PM', badge:'', docs:[] },
+    { id:'f4', date:'Sep 4',  route:'PMO → IST', info:'Turkish Airlines · 2h35m\n9:25 AM → 1:00 PM', badge:'Tight!', docs:[] },
+    { id:'f5', date:'Sep 7',  route:'IST → EWR', info:'Turkish Airlines · 10h40m\n6:40 PM → 10:20 PM', badge:'', docs:[] },
+  ],
+  sbRows: [
+    { id:'s1', date:'Aug 20–25', city:'🇬🇧 London',         detail:'5 nights · concerts, museums, South Bank',        status:'need', docs:[] },
+    { id:'s2', date:'Aug 25',    city:'✈ LGW → BRI',        detail:'easyJet 7:05 AM · leave hotel 4:30 AM',           status:'ok',   docs:[] },
+    { id:'s3', date:'Aug 25–27', city:'🇮🇹 Matera',          detail:'2 nights · UNESCO cave city · Sassi',             status:'warn', docs:[] },
+    { id:'s4', date:'Aug 27',    city:'🚆 Matera → Rome',    detail:'Train ~10 AM · Frecciarossa · 3h45m',             status:'info', docs:[] },
+    { id:'s5', date:'Aug 27–30', city:'🇮🇹 Rome',            detail:'3 nights · Hotel Manfredi ✓',                     status:'ok',   docs:[] },
+    { id:'s6', date:'Aug 30',    city:'✈ FCO → CTA',         detail:'ITA · 10:40 AM → drive Taormina 1h',             status:'ok',   docs:[] },
+    { id:'s7', date:'Aug 30–Sep 1', city:'🇮🇹 Taormina',    detail:'2 nights · Isola Bella · Blue Cave · Greek Theatre', status:'warn', docs:[] },
+    { id:'s8', date:'Sep 1–3',   city:'🇮🇹 Cefalù + Alcamo', detail:'Cefalù–Maria ✓ · Alcamo–Rosa Maria ✓',           status:'ok',   docs:[] },
+    { id:'s9', date:'Sep 4',     city:'✈ PMO → IST',         detail:'Turkish 9:25 AM · leave Alcamo 6:30 AM',         status:'warn', docs:[] },
+    { id:'s10',date:'Sep 4–7',   city:'🇹🇷 Istanbul',        detail:"3 nights · James's place Beyoğlu ✓",             status:'ok',   docs:[] },
+    { id:'s11',date:'Sep 7',     city:'✈ IST → EWR',         detail:'Turkish 6:40 PM',                                status:'ok',   docs:[] },
+  ],
+  cities: [
+    { id:'london', name:'London', sub:'United Kingdom · Aug 20–25 · 5 nights · Fly LGW Aug 25', nights:5, colorIdx:0,
+      days:[
+        { id:'d1', date:'Friday, Aug 21', title:'Arrive London · South Bank · Borough Market', where:'Heathrow → central', night:'London',
+          slots:[
+            { id:'sl1', time:'7:15 AM', name:'Land at Heathrow (LHR)', note:'Elizabeth line to central London ~35 min.', tags:[{type:'flight',text:'Elizabeth line: Heathrow → central'}], docs:[] },
+            { id:'sl2', time:'Morning', name:'📸 Big Ben & Westminster Bridge', note:'South side of Westminster Bridge — Big Ben, Parliament, Thames. Best in morning light.', tags:[], docs:[] },
+            { id:'sl3', time:'Afternoon', name:'South Bank & Borough Market', note:'Tate Modern, Globe Theatre, Millennium Bridge. Borough Market open Fri 10–5.', tags:[{type:'food',text:'Borough Market — oysters, Monmouth Coffee, Neal\'s Yard'}], docs:[] },
+            { id:'sl4', time:'Evening', name:'Soho & West End', note:'TKTS booth at Leicester Square — up to 50% off same-day theatre tickets.', tags:[{type:'food',text:'Dishoom Covent Garden — book 3–4 weeks ahead'}], docs:[] },
+          ]
+        },
+        { id:'d2', date:'Saturday, Aug 22', title:'Westminster · National Gallery · Soane\'s Museum', where:'Central London', night:'London',
+          slots:[
+            { id:'sl5', time:'9:00 AM', name:'Buckingham Palace & St James\'s Park', note:'State Rooms open Aug–Sep. Book at rct.uk.', tags:[{type:'tip',text:'State Rooms: rct.uk — pre-book timed entry'}], docs:[] },
+            { id:'sl6', time:'12:30 PM', name:'🎨 National Gallery', note:'Free. Van Gogh, Vermeer, da Vinci, Rembrandt.', tags:[], docs:[] },
+            { id:'sl7', time:'3:00 PM', name:'🏛️ Sir John Soane\'s Museum', note:'Free. 13 Lincoln\'s Inn Fields. Hogarth\'s Rake\'s Progress. One of London\'s best secrets.', tags:[{type:'tip',text:'Free entry · closed Sun–Mon'}], docs:[] },
+          ]
+        },
+        { id:'d3', date:'Sunday, Aug 23', title:'Seven Sisters day trip', where:'East Sussex coast', night:'London',
+          slots:[
+            { id:'sl8', time:'8:30 AM', name:'Train Victoria → Seaford', note:'1h20m direct. Walk east along the chalk cliffs.', tags:[{type:'tip',text:'~£18 return · Southern Rail from Victoria'}], docs:[] },
+            { id:'sl9', time:'11:00 AM', name:'Seven Sisters clifftop walk', note:'White chalk cliffs, English Channel views. Full walk ~11 miles, 3–4 hours to Eastbourne.', tags:[], docs:[] },
+          ]
+        },
+        { id:'d4', date:'Monday, Aug 24', title:'🏺 British Museum · ★ Ariana Grande – The O2', where:'Bloomsbury + North Greenwich', night:'London',
+          slots:[
+            { id:'sl10', time:'10:00 AM', name:'British Museum', note:'Free. Rosetta Stone, Elgin Marbles, Sutton Hoo helmet.', tags:[], docs:[] },
+            { id:'sl11', time:'6:30 PM', name:'★ Ariana Grande — Eternal Sunshine Tour', note:'Doors 6:30 PM · The O2 Arena · Jubilee line to North Greenwich.', tags:[{type:'warn',text:'Pack tonight — leaving 4:30 AM tomorrow for Gatwick'}], docs:[] },
+          ]
+        },
+        { id:'d5', date:'Tuesday, Aug 25', title:'⚠ Early departure — fly LGW → Bari → drive Matera', where:'London → Gatwick → Bari → Matera', night:'Matera',
+          slots:[
+            { id:'sl12', time:'4:00 AM', name:'⚠ Wake up · leave hotel 4:30 AM', note:'Taxi to Gatwick Southern terminal — 45–60 min from central London.', tags:[{type:'warn',text:'⚠ LGW departs 7:05 AM · arrive airport by 5:30 AM'}], docs:[] },
+            { id:'sl13', time:'7:05 AM', name:'Fly LGW → BRI · easyJet', note:'2h55m. Arrive Bari ~11:00 AM.', tags:[{type:'flight',text:'easyJet · 2h55m · LGW → BRI'}], docs:[] },
+            { id:'sl14', time:'11:30 AM', name:'Pick up rental car at BRI', note:'Drive to Matera — 65 km, ~1h15m.', tags:[{type:'drive',text:'BRI → Matera: ~65 km · 1h15m'}], docs:[] },
+            { id:'sl15', time:'1:00 PM', name:'Arrive Matera — first Sassi views', note:'Check in. Walk to the viewpoint immediately.', tags:[], docs:[] },
+          ]
+        },
+      ]
+    },
+    { id:'matera', name:'Matera', sub:'Basilicata · Aug 25–27 · 2 nights · Train to Rome Aug 27', nights:2, colorIdx:3,
+      days:[
+        { id:'d6', date:'Wednesday, Aug 26', title:'Matera — cave churches · Murgia plateau', where:'Matera', night:'Matera',
+          slots:[
+            { id:'sl16', time:'Morning', name:'Palombaro Lungo cistern', note:'15,000 sqm underground cistern beneath Piazza Vittorio Veneto.', tags:[{type:'tip',text:'Book at ticket office · allow 45 min'}], docs:[] },
+            { id:'sl17', time:'10:00 AM', name:'Rock churches of the Sassi', note:'150+ rupestrian churches with Byzantine frescoes, 8th–13th centuries.', tags:[], docs:[] },
+            { id:'sl18', time:'12:30 PM', name:'Murgia Plateau — cross the ravine', note:'Suspension bridge over the Gravina. View back to Matera from the plateau.', tags:[], docs:[] },
+          ]
+        },
+        { id:'d7', date:'Thursday, Aug 27', title:'Morning Matera · train to Rome', where:'Matera → Bari → Roma Termini', night:'Rome',
+          slots:[
+            { id:'sl19', time:'Morning', name:'Last espresso + check out', note:'Drive to Bari Centrale ~1h15m.', tags:[], docs:[] },
+            { id:'sl20', time:'~10 AM', name:'🚆 Train: Bari → Roma Termini', note:'Frecciarossa direct — 3h45m. Book at trenitalia.com.', tags:[{type:'tip',text:'trenitalia.com · Frecciarossa · ~3h45m · ~€40–70'}], docs:[] },
+            { id:'sl21', time:'Early PM', name:'Arrive Rome · Hotel Manfredi', note:'Via Ludovisi 15. Walking distance to Villa Borghese.', tags:[{type:'tip',text:'Hotel Manfredi di Via Veneto — ✓ Booked'}], docs:[] },
+            { id:'sl22', time:'Evening', name:'Trastevere — first Roman dinner', note:'Cross the Tiber. Cacio e pepe, supplì, carciofi.', tags:[{type:'food',text:'Da Enzo al 29 — book ahead'}], docs:[] },
+          ]
+        },
+      ]
+    },
+    { id:'rome', name:'Roma', sub:'Italy · Aug 27–30 · 3 nights · Hotel Manfredi ✓', nights:3, colorIdx:1,
+      days:[
+        { id:'d8', date:'Friday, Aug 28', title:'Colosseum · Forum · Pantheon · Piazza Navona', where:'Ancient Rome', night:'Rome',
+          slots:[
+            { id:'sl23', time:'7:30 AM', name:'Colosseum — early entry', note:'Pre-booked. Underground tour.', tags:[{type:'tip',text:'coopculture.it — sells out days ahead'}], docs:[] },
+            { id:'sl24', time:'10:00 AM', name:'Roman Forum & Palatine Hill', note:'Included with Colosseum ticket.', tags:[], docs:[] },
+            { id:'sl25', time:'4:00 PM', name:'Pantheon & Piazza Navona', note:'€5 timed reservation for Pantheon.', tags:[{type:'tip',text:'pantheonroma.com — €5 reservation'}], docs:[] },
+            { id:'sl26', time:'Evening', name:'Roscioli dinner', note:'Reserve 2+ weeks ahead.', tags:[{type:'food',text:'Roscioli — the carbonara is definitive'}], docs:[] },
+          ]
+        },
+        { id:'d9', date:'Saturday, Aug 29', title:'Vatican · St Peter\'s · Castel Sant\'Angelo', where:'Vatican City', night:'Rome',
+          slots:[
+            { id:'sl27', time:'7:30 AM', name:'Vatican Museums — early access', note:'Sistine Chapel in near-silence.', tags:[{type:'tip',text:'Book at museivaticani.va — weeks ahead'}], docs:[] },
+            { id:'sl28', time:'10:30 AM', name:'St Peter\'s dome climb', note:'551 steps. €8 for the dome.', tags:[], docs:[] },
+            { id:'sl29', time:'3:30 PM', name:'Trevi Fountain & Spanish Steps', note:'5 min walk from Hotel Manfredi.', tags:[], docs:[] },
+          ]
+        },
+        { id:'d10', date:'Sunday, Aug 30', title:'Morning Rome · fly FCO → Catania → drive Taormina', where:'Rome → FCO → CTA → Taormina', night:'Taormina',
+          slots:[
+            { id:'sl30', time:'8:00 AM', name:'⚠ Head to FCO', note:'Leonardo Express from Termini: 30 min, €14. ITA flight 10:40 AM.', tags:[{type:'warn',text:'⚠ Catch 8:00–8:30 AM Leonardo Express'}], docs:[] },
+            { id:'sl31', time:'10:40 AM', name:'Fly FCO → CTA · ITA Airways', note:'1h20m nonstop.', tags:[{type:'flight',text:'ITA Airways · 1h20m · FCO → CTA'}], docs:[] },
+            { id:'sl32', time:'12:30 PM', name:'Rental car CTA → Taormina', note:'50 km north on A18, ~1 hour. Etna visible left.', tags:[{type:'warn',text:'⚠ ZTL — park at Lumbi, cable car up (€3)'}], docs:[] },
+          ]
+        },
+      ]
+    },
+    { id:'sicily', name:'Sicilia', sub:'Aug 30 – Sep 4 · 5 nights · Taormina → Cefalù → Alcamo · PMO Sep 4', nights:5, colorIdx:4,
+      days:[
+        { id:'d11', date:'Monday, Aug 31', title:'Taormina — Isola Bella · Blue Cave · Greek Theatre', where:'Taormina', night:'Taormina',
+          slots:[
+            { id:'sl33', time:'7:30 AM', name:'🐟 Blue Cave boat — morning only', note:'Blue light disappears by 11 AM. Book earliest slot.', tags:[{type:'warn',text:'⚠ MORNING ONLY — light gone by 11 AM'}], docs:[] },
+            { id:'sl34', time:'10:00 AM', name:'Isola Bella swim', note:'Tiny island, protected marine reserve. 26°C water.', tags:[], docs:[] },
+            { id:'sl35', time:'12:00 PM', name:'Greek Theatre of Taormina', note:'Etna fills the stage arch. Most dramatic framed view in Italy.', tags:[{type:'vibe',text:'White Lotus vibes ✨'}], docs:[] },
+          ]
+        },
+        { id:'d12', date:'Tuesday, Sep 1', title:'Taormina → drive to Cefalù (~2.5h)', where:'Taormina → A18/A20 → Cefalù', night:'Cefalù (Maria ✓)',
+          slots:[
+            { id:'sl36', time:'11:00 AM', name:'Check out · drive to Cefalù', note:'A18 north then A20 west. ~115 km, 2.5 hours.', tags:[{type:'drive',text:'~115 km · 2.5h · toll ~€8'}], docs:[] },
+            { id:'sl37', time:'2:00 PM', name:'Arrive Cefalù — Maria\'s place', note:'Norman beach town. Cathedral, alleyways, La Rocca.', tags:[{type:'tip',text:'Maria\'s place — ✓ Booked'}], docs:[] },
+          ]
+        },
+        { id:'d13', date:'Wednesday, Sep 2', title:'Cefalù — beach · cathedral · La Rocca hike', where:'Cefalù', night:'Cefalù (Maria ✓)',
+          slots:[
+            { id:'sl38', time:'Morning', name:'Beach day', note:'Fine sand beach right in town.', tags:[], docs:[] },
+            { id:'sl39', time:'10:30 AM', name:'Norman Cathedral of Cefalù', note:'1131 AD. Byzantine gold mosaics of Christ Pantocrator.', tags:[{type:'tip',text:'Entry ~€5 · allow 45 min'}], docs:[] },
+            { id:'sl40', time:'5:00 PM', name:'La Rocca hike — sunset from the fortress', note:'45-min ascent. Views across the full coastline.', tags:[{type:'tip',text:'Take water · path starts behind the cathedral'}], docs:[] },
+          ]
+        },
+        { id:'d14', date:'Thursday, Sep 3', title:'Cefalù → Tonnara di Scopello → Segesta → Alcamo', where:'Cefalù → Scopello → Segesta → Alcamo', night:'Alcamo (Rosa Maria ✓)',
+          slots:[
+            { id:'sl41', time:'8:00 AM', name:'Drive west', note:'~2h to Scopello.', tags:[{type:'drive',text:'Cefalù → Scopello: ~2h · 110 km'}], docs:[] },
+            { id:'sl42', time:'10:30 AM', name:'Tonnara di Scopello', note:'Ancient tuna facility between rock stacks in a perfect blue cove.', tags:[], docs:[] },
+            { id:'sl43', time:'1:00 PM', name:'Segesta — Greek temple & theatre', note:'5th-century BC temple. Still standing after 2,500 years.', tags:[{type:'tip',text:'parcodisegesta.it · ~€10 · allow 2 hrs'}], docs:[] },
+            { id:'sl44', time:'3:30 PM', name:'Arrive Alcamo — Rosa Maria\'s Airbnb', note:'30 min from PMO. Pack tonight.', tags:[{type:'warn',text:'⚠ Set alarm 6:00 AM · leave 6:30 AM'}], docs:[] },
+          ]
+        },
+        { id:'d15', date:'Friday, Sep 4', title:'⚠ Tight departure — PMO → Istanbul', where:'Alcamo → PMO → IST', night:'Istanbul (James ✓)',
+          slots:[
+            { id:'sl45', time:'6:00 AM', name:'⚠ Wake up · leave Alcamo 6:30 AM', note:'Drive 20–30 min to PMO. Return rental car. Check-in closes 8:25 AM.', tags:[{type:'warn',text:'⚠ Check-in closes 8:25 AM for 9:25 AM flight'}], docs:[] },
+            { id:'sl46', time:'9:25 AM', name:'Fly PMO → IST · Turkish Airlines', note:'2h35m nonstop. Arrive Istanbul 1:00 PM.', tags:[{type:'flight',text:'Turkish Airlines · 2h35m · PMO → IST'}], docs:[] },
+            { id:'sl47', time:'1:45 PM', name:'Arrive Istanbul · taxi to Beyoğlu', note:'BiTaksi app · 35–45 min · ~€25–35.', tags:[{type:'tip',text:'BiTaksi app · official taxi rank at IST'}], docs:[] },
+          ]
+        },
+      ]
+    },
+    { id:'istanbul', name:'İstanbul', sub:'Turkey · Sep 4–7 · 3 nights · James\'s place Beyoğlu · Fly home Sep 7', nights:3, colorIdx:2,
+      days:[
+        { id:'d16', date:'Saturday, Sep 5', title:'Çemberlitaş Hamamı · Grand Bazaar · Bosphorus sunset', where:'Sultanahmet + Beyoğlu', night:'Istanbul',
+          slots:[
+            { id:'sl48', time:'10:00 AM', name:'🛁 Çemberlitaş Hamamı', note:'Built by Sinan 1584. Kese scrub, soap massage on heated marble. Allow 2 hours.', tags:[{type:'tip',text:'cemberlitashamami.com · ~€30–45'}], docs:[] },
+            { id:'sl49', time:'1:00 PM', name:'Grand Bazaar & Spice Market', note:'4,000 shops since 1455. Turkish delight, saffron, ceramics.', tags:[], docs:[] },
+            { id:'sl50', time:'3:30 PM', name:'Bosphorus ferry to Asian side', note:'Eminönü to Üsküdar: €1, 20 min. You are now in Asia.', tags:[], docs:[] },
+            { id:'sl51', time:'Evening', name:'Rooftop sunset · dinner', note:'Le Fumoir rooftop at Georges Hotel Galata.', tags:[{type:'food',text:'Zübeyir Ocakbaşı — grilled meats over charcoal'}], docs:[] },
+          ]
+        },
+        { id:'d17', date:'Sunday, Sep 6', title:'Topkapı Palace · Kadıköy · Ortaköy', where:'Sultanahmet + Asian side', night:'Istanbul',
+          slots:[
+            { id:'sl52', time:'9:30 AM', name:'Topkapı Palace + Harem', note:'Ottoman Empire HQ for 400 years. Topkapı Dagger, 86-carat diamond.', tags:[{type:'tip',text:'muze.gov.tr · Harem separate ticket · closed Tues'}], docs:[] },
+            { id:'sl53', time:'1:00 PM', name:'Ferry to Kadıköy food market', note:'Most vibrant neighbourhood in Istanbul.', tags:[{type:'food',text:'Çiya Sofrası — extraordinary Anatolian cooking'}], docs:[] },
+            { id:'sl54', time:'3:30 PM', name:'Ortaköy mosque & kumpir', note:'Baroque mosque on the water with the Bosphorus Bridge above.', tags:[], docs:[] },
+          ]
+        },
+        { id:'d18', date:'Monday, Sep 7', title:'Last morning · fly IST → Newark EWR', where:'Istanbul → IST Airport → EWR', night:'Flying home ✈',
+          slots:[
+            { id:'sl55', time:'Morning', name:'Final simit & çay · Grand Bazaar', note:'Grand Bazaar open Mondays. Last Turkish breakfast.', tags:[], docs:[] },
+            { id:'sl56', time:'4:00 PM', name:'⚠ Taxi to Istanbul Airport (IST)', note:'45+ km from Beyoğlu. Leave no later than 4:00 PM.', tags:[{type:'warn',text:'⚠ Leave Beyoğlu NO LATER than 4:00 PM'}], docs:[] },
+            { id:'sl57', time:'6:40 PM', name:'✈ Fly IST → EWR · Turkish Airlines', note:'10h40m nonstop. Arrive Newark ~10:20 PM.', tags:[{type:'flight',text:'Turkish Airlines · 10h40m · IST → EWR'}], docs:[] },
+          ]
+        },
+      ]
+    },
+  ]
+};
+
+/* ════════════════════════════════════
+   STATE
+════════════════════════════════════ */
+let state = null;
+let editMode = false;
+let unsaved = false;
+let _docCtx = null; // { target, targetId, type: 'flight'|'sbRow'|'slot' }
+let _tagCtx = null; // { ci, di, si, ti }
+let _docFileB64 = null;
+
+/* ════════════════════════════════════
+   LOAD / SAVE
+════════════════════════════════════ */
+function loadState() {
+  try {
+    const raw = localStorage.getItem(SK);
+    if (raw) { state = JSON.parse(raw); return; }
+  } catch(e) {}
+  state = JSON.parse(JSON.stringify(DEFAULT));
+}
+
+function saveState() {
+  try { localStorage.setItem(SK, JSON.stringify(state)); } catch(e) {
+    alert('Storage full — images take a lot of space. Try removing some QR codes/images.');
+  }
+  unsaved = false;
+  updateSaveIndicator();
+  flashToast();
+}
+
+function markUnsaved() {
+  unsaved = true;
+  updateSaveIndicator();
+}
+
+function updateSaveIndicator() {
+  const dot = document.getElementById('save-dot');
+  const lbl = document.getElementById('save-label');
+  if (unsaved) {
+    dot.className = 'indicator unsaved';
+    lbl.textContent = 'Unsaved changes';
+  } else {
+    dot.className = 'indicator saved';
+    lbl.textContent = 'All saved';
+  }
+}
+
+let toastTimer;
+function flashToast() {
+  const t = document.getElementById('save-toast');
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function resetAll() {
+  if (!confirm('Reset ALL edits to defaults? This cannot be undone.')) return;
+  localStorage.removeItem(SK);
+  state = JSON.parse(JSON.stringify(DEFAULT));
+  renderAll();
+  markUnsaved();
+  saveState();
+}
+
+/* ════════════════════════════════════
+   EDIT MODE
+════════════════════════════════════ */
+function toggleEdit() {
+  editMode = !editMode;
+  document.body.classList.toggle('editing', editMode);
+  const btn = document.getElementById('edit-btn');
+  btn.textContent = editMode ? '👁 Done editing' : '✏ Edit';
+  btn.className = 'btn ' + (editMode ? 'blue' : '');
+  // Toggle contenteditable on all [data-field]
+  document.querySelectorAll('[data-field]').forEach(el => {
+    el.contentEditable = editMode ? 'true' : 'false';
+  });
+  document.querySelectorAll('.f-date,.f-route,.f-info,.sb-date,.sb-city,.sb-detail,.slot-t,.slot-name,.slot-note,.city-sub,.day-date,.day-title,.day-where,.night-badge').forEach(el => {
+    el.contentEditable = editMode ? 'true' : 'false';
+  });
+}
+
+/* ════════════════════════════════════
+   RENDER ALL
+════════════════════════════════════ */
+function renderAll() {
+  renderHero();
+  renderFlights();
+  renderSbTable();
+  renderCities();
+}
+
+/* ── HERO ── */
+function renderHero() {
+  const h = state.hero;
+  Object.keys(h).forEach(k => {
+    const el = document.querySelector(`[data-field="${k}"]`);
+    if (el) el.innerHTML = h[k];
+  });
+  document.querySelectorAll('[data-field]').forEach(el => {
+    const k = el.dataset.field;
+    el.oninput = () => { state.hero[k] = el.innerHTML; markUnsaved(); };
+    el.contentEditable = editMode ? 'true' : 'false';
+  });
+}
+
+/* ── FLIGHTS ── */
+function renderFlights() {
+  const list = document.getElementById('flights-list');
+  list.innerHTML = state.flights.map((f,i) => `
+    <div class="flight-card" id="fc-${f.id}">
+      <span class="f-date" oninput="state.flights[${i}].date=this.innerText;markUnsaved()">${f.date}</span>
+      <div class="f-route" oninput="state.flights[${i}].route=this.innerText;markUnsaved()">${f.route}</div>
+      <div class="f-divider"></div>
+      <div class="f-info" style="white-space:pre-line" oninput="state.flights[${i}].info=this.innerText;markUnsaved()">${f.info}</div>
+      ${f.badge ? `<span class="f-badge">${f.badge}</span>` : ''}
+      <div class="f-booking">
+        ${renderDocChips(f.docs, 'flight', f.id)}
+        <button class="attach-btn" onclick="openDocModal('flight','${f.id}')">📎 Add booking</button>
+        ${editMode?`<button class="attach-btn" onclick="deleteFlight('${f.id}')" style="color:#fca5a5">✕</button>`:''}
+      </div>
+    </div>`).join('');
+  list.querySelectorAll('.f-date,.f-route,.f-info').forEach(el => { el.contentEditable = editMode?'true':'false'; });
+}
+
+/* ── STATUS BOARD ── */
+function renderSbTable() {
+  const body = document.getElementById('sb-body');
+  body.innerHTML = state.sbRows.map((r,i) => {
+    const p = PILL_MAP[r.status] || PILL_MAP.ok;
+    return `<tr>
+      <td class="sb-date"><span class="sb-date" oninput="state.sbRows[${i}].date=this.innerText;markUnsaved()">${r.date}</span></td>
+      <td class="sb-city"><span oninput="state.sbRows[${i}].city=this.innerText;markUnsaved()">${r.city}</span></td>
+      <td class="sb-detail"><span oninput="state.sbRows[${i}].detail=this.innerText;markUnsaved()">${r.detail}</span></td>
+      <td><div class="sb-right">
+        ${renderDocChips(r.docs, 'sbRow', r.id)}
+        <span class="row-attach"><button class="row-attach-btn" onclick="openDocModal('sbRow','${r.id}')">📎</button></span>
+        <span class="pip ${p.cls}" onclick="cyclePip('${r.id}')">${p.lbl}</span>
+        ${editMode?`<button onclick="deleteSbRow('${r.id}')" style="background:none;border:none;color:var(--red);font-size:11px;cursor:pointer;padding:2px">✕</button>`:''}
+      </div></td>
+    </tr>`;
+  }).join('');
+  body.querySelectorAll('[oninput]').forEach(el => { el.contentEditable = editMode?'true':'false'; });
+}
+
+/* ── CITIES ── */
+function renderCities() {
+  const cont = document.getElementById('cities');
+  cont.innerHTML = '';
+  state.cities.forEach((city, ci) => {
+    const color = CITY_COLORS[city.colorIdx % CITY_COLORS.length];
+    const sec = document.createElement('div');
+    sec.className = 'city-sec fade-in';
+    sec.id = city.id;
+    sec.innerHTML = `
+      <button class="city-del" onclick="deleteCity('${city.id}')">Remove destination</button>
+      <div class="city-hdr">
+        <div class="city-name-wrap">
+          <div class="city-name" style="color:${color}" oninput="state.cities[${ci}].name=this.innerText;markUnsaved()">${city.name}</div>
+          <div class="city-sub" oninput="state.cities[${ci}].sub=this.innerText;markUnsaved()">${city.sub}</div>
+        </div>
+        <div>
+          <div class="city-nights-num" style="color:${color}" oninput="state.cities[${ci}].nights=this.innerText;markUnsaved()">${city.nights}</div>
+          <div class="city-nights-lbl">Nights</div>
+        </div>
+      </div>
+      <div id="days-${city.id}"></div>
+      <button class="add-strip" onclick="addDay('${city.id}')">+ Add day</button>`;
+    cont.appendChild(sec);
+    sec.querySelectorAll('.city-name,.city-sub,.city-nights-num').forEach(el => { el.contentEditable = editMode?'true':'false'; });
+
+    const daysDiv = sec.querySelector(`#days-${city.id}`);
+    city.days.forEach((day, di) => {
+      const dayEl = buildDayEl(city, ci, day, di, color);
+      daysDiv.appendChild(dayEl);
+    });
+    // open first day
+    const first = daysDiv.querySelector('.day');
+    if (first) first.classList.add('open');
+
+    obsv.observe(sec);
+  });
+}
+
+function buildDayEl(city, ci, day, di, color) {
+  const el = document.createElement('div');
+  el.className = 'day';
+  el.id = 'day-'+day.id;
+  el.style.setProperty('--city-col', color);
+  el.innerHTML = `
+    <div class="day-hdr" onclick="toggleDay(this.parentElement)">
+      <div class="day-n">${di+1}</div>
+      <div class="day-meta">
+        <div class="day-date" oninput="findDay('${day.id}').date=this.innerText;markUnsaved()">${day.date}</div>
+        <div class="day-title" oninput="findDay('${day.id}').title=this.innerText;markUnsaved()">${day.title}</div>
+        ${day.where?`<div class="day-where" oninput="findDay('${day.id}').where=this.innerText;markUnsaved()">${day.where}</div>`:''}
+      </div>
+      ${day.night?`<div class="night-badge" oninput="findDay('${day.id}').night=this.innerText.replace('🌙 ','');markUnsaved()">🌙 ${day.night}</div>`:''}
+      <div class="chev"><svg viewBox="0 0 12 8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5 5-5"/></svg></div>
+    </div>
+    <div class="day-actions">
+      <button class="sm-btn" onclick="moveDayUp('${city.id}','${day.id}');event.stopPropagation()">↑</button>
+      <button class="sm-btn" onclick="moveDayDown('${city.id}','${day.id}');event.stopPropagation()">↓</button>
+      <button class="sm-btn danger" onclick="deleteDay('${city.id}','${day.id}');event.stopPropagation()">Remove day</button>
+    </div>
+    <div class="day-body"><div class="day-body-in">
+      <div class="slots" id="slots-${day.id}">
+        ${day.slots.map((s,si) => buildSlotHTML(s, ci, di, si)).join('')}
+      </div>
+      <button class="add-strip" style="margin-top:6px" onclick="addSlot('${day.id}')">+ Add stop</button>
+    </div></div>`;
+  el.querySelectorAll('.day-date,.day-title,.day-where,.night-badge').forEach(e => { e.contentEditable = editMode?'true':'false'; });
+  el.querySelectorAll('.slot-t,.slot-name,.slot-note').forEach(e => { e.contentEditable = editMode?'true':'false'; });
+  return el;
+}
+
+function buildSlotHTML(s, ci, di, si) {
+  const docsHTML = s.docs && s.docs.length
+    ? `<div class="slot-docs">${renderDocChips(s.docs,'slot',s.id)}</div>` : '';
+  const tagsHTML = (s.tags||[]).map((t,ti) =>
+    `<span class="tag" style="${tagStyle(t.type)}" onclick="openTagModal(${ci},${di},${si},${ti})" title="Click to edit tag">${t.text}</span>`
+  ).join('');
+  return `
+    <div class="slot" id="slot-${s.id}">
+      <div class="slot-t" oninput="findSlot('${s.id}').time=this.innerText;markUnsaved()">${s.time}</div>
+      <div>
+        <div class="slot-name" oninput="findSlot('${s.id}').name=this.innerText;markUnsaved()">${s.name}</div>
+        <div class="slot-note" oninput="findSlot('${s.id}').note=this.innerText;markUnsaved()">${s.note}</div>
+        <div class="tags" id="tags-${s.id}">
+          ${tagsHTML}
+          <button class="sm-btn" style="display:none;font-size:10px;padding:2px 7px" id="addtag-${s.id}" onclick="addTagTo('${s.id}')">+ tag</button>
+        </div>
+        ${docsHTML}
+        <button class="sm-btn" style="display:none;font-size:10px;padding:3px 9px;margin-top:6px" id="adddoc-${s.id}" onclick="openDocModal('slot','${s.id}')">📎 Add booking / QR</button>
+      </div>
+      <div class="slot-actions">
+        <button class="sm-btn" onclick="moveSlotUp('${s.id}')">↑</button>
+        <button class="sm-btn" onclick="moveSlotDown('${s.id}')">↓</button>
+        <button class="sm-btn danger" onclick="deleteSlot('${s.id}')">✕</button>
+      </div>
+    </div>`;
+}
+
+function renderDocChips(docs, type, id) {
+  if (!docs || !docs.length) return '';
+  return docs.map((d,i) => `
+    <span class="booking-chip" onclick="viewDoc('${type}','${id}',${i})" title="${d.label}">
+      ${d.image ? '🖼' : '🔗'} ${d.label.length>20 ? d.label.slice(0,18)+'…' : d.label}
+      ${editMode?`<span class="doc-del" onclick="removeDoc('${type}','${id}',${i});event.stopPropagation()">✕</span>`:''}
+    </span>`).join('');
+}
+
+/* ════════════════════════════════════
+   FINDERS (by id)
+════════════════════════════════════ */
+function findFlight(id) { return state.flights.find(f=>f.id===id); }
+function findSbRow(id)  { return state.sbRows.find(r=>r.id===id); }
+function findCity(id)   { return state.cities.find(c=>c.id===id); }
+function findDay(id)    { for(const c of state.cities) for(const d of c.days) if(d.id===id) return d; }
+function findSlot(id)   { for(const c of state.cities) for(const d of c.days) for(const s of d.slots) if(s.id===id) return s; }
+function findSlotCtx(id){ for(let ci=0;ci<state.cities.length;ci++){const c=state.cities[ci]; for(let di=0;di<c.days.length;di++){const d=c.days[di]; for(let si=0;si<d.slots.length;si++){if(d.slots[si].id===id)return{ci,di,si,slot:d.slots[si]}}}} return null; }
+
+/* ════════════════════════════════════
+   CRUD — FLIGHTS, SB ROWS, CITIES, DAYS, SLOTS
+════════════════════════════════════ */
+function uid() { return '_'+Math.random().toString(36).slice(2,9); }
+
+function addFlight() {
+  state.flights.push({ id:uid(), date:'New date', route:'A → B', info:'Airline · duration', badge:'', docs:[] });
+  renderFlights(); markUnsaved();
+}
+function deleteFlight(id) {
+  state.flights = state.flights.filter(f=>f.id!==id);
+  renderFlights(); markUnsaved();
+}
+
+function addSbRow() {
+  state.sbRows.push({ id:uid(), date:'New date', city:'New city', detail:'Details', status:'need', docs:[] });
+  renderSbTable(); markUnsaved();
+}
+function deleteSbRow(id) {
+  state.sbRows = state.sbRows.filter(r=>r.id!==id);
+  renderSbTable(); markUnsaved();
+}
+function cyclePip(id) {
+  if(!editMode) return;
+  const order=['ok','warn','need','info'];
+  const r=findSbRow(id); if(!r)return;
+  r.status = order[(order.indexOf(r.status)+1)%order.length];
+  renderSbTable(); markUnsaved();
+}
+
+function addCity() {
+  const name = prompt('Destination name:') || 'New City';
+  state.cities.push({ id:uid(), name, sub:'Country · dates · N nights', nights:2, colorIdx:state.cities.length%CITY_COLORS.length,
+    days:[{ id:uid(), date:'Day 1', title:'Arrive & explore', where:'', night:name, slots:[{id:uid(),time:'Morning',name:'Arrive',note:'Check in and explore.',tags:[],docs:[]}] }]
+  });
+  renderCities(); markUnsaved();
+  setTimeout(()=>{ const el=document.getElementById(state.cities[state.cities.length-1].id); if(el)el.scrollIntoView({behavior:'smooth'}); },100);
+}
+function deleteCity(id) {
+  if(!confirm(`Remove this destination and all its days?`))return;
+  state.cities=state.cities.filter(c=>c.id!==id);
+  renderCities(); markUnsaved();
+}
+
+function addDay(cityId) {
+  const c=findCity(cityId); if(!c)return;
+  c.days.push({ id:uid(), date:'New date', title:'New day', where:'', night:c.name, slots:[{id:uid(),time:'Morning',name:'Activity',note:'Description.',tags:[],docs:[]}] });
+  renderCities(); markUnsaved();
+}
+function deleteDay(cityId, dayId) {
+  const c=findCity(cityId); if(!c)return;
+  if(!confirm('Remove this day?'))return;
+  c.days=c.days.filter(d=>d.id!==dayId);
+  renderCities(); markUnsaved();
+}
+function moveDayUp(cityId, dayId) {
+  const c=findCity(cityId); if(!c)return;
+  const i=c.days.findIndex(d=>d.id===dayId); if(i<=0)return;
+  [c.days[i-1],c.days[i]]=[c.days[i],c.days[i-1]];
+  renderCities(); markUnsaved();
+}
+function moveDayDown(cityId, dayId) {
+  const c=findCity(cityId); if(!c)return;
+  const i=c.days.findIndex(d=>d.id===dayId); if(i<0||i>=c.days.length-1)return;
+  [c.days[i],c.days[i+1]]=[c.days[i+1],c.days[i]];
+  renderCities(); markUnsaved();
+}
+
+function addSlot(dayId) {
+  const d=findDay(dayId); if(!d)return;
+  d.slots.push({ id:uid(), time:'Time', name:'Activity', note:'Notes.', tags:[], docs:[] });
+  renderCities(); markUnsaved();
+}
+function deleteSlot(slotId) {
+  for(const c of state.cities) for(const d of c.days){ const i=d.slots.findIndex(s=>s.id===slotId); if(i>=0){d.slots.splice(i,1); renderCities(); markUnsaved(); return;} }
+}
+function moveSlotUp(slotId) {
+  for(const c of state.cities) for(const d of c.days){ const i=d.slots.findIndex(s=>s.id===slotId); if(i>0){[d.slots[i-1],d.slots[i]]=[d.slots[i],d.slots[i-1]]; renderCities(); markUnsaved(); return;} }
+}
+function moveSlotDown(slotId) {
+  for(const c of state.cities) for(const d of c.days){ const i=d.slots.findIndex(s=>s.id===slotId); if(i>=0&&i<d.slots.length-1){[d.slots[i],d.slots[i+1]]=[d.slots[i+1],d.slots[i]]; renderCities(); markUnsaved(); return;} }
+}
+
+/* ════════════════════════════════════
+   DOCUMENTS / BOOKINGS
+════════════════════════════════════ */
+function openDocModal(type, targetId, existingIdx) {
+  _docCtx = { type, targetId, existingIdx: existingIdx ?? null };
+  _docFileB64 = null;
+  document.getElementById('doc-label-in').value = '';
+  document.getElementById('doc-link-in').value = '';
+  document.getElementById('doc-file-in').value = '';
+  const thumb = document.getElementById('doc-preview-thumb');
+  thumb.style.display = 'none'; thumb.src = '';
+  // Title
+  const titles = { flight:'Add booking to flight', sbRow:'Add booking to this leg', slot:'Add booking / QR code to this stop' };
+  document.getElementById('doc-modal-title').textContent = titles[type] || 'Add booking';
+  document.getElementById('doc-modal').classList.add('open');
+}
+
+function previewFile(input) {
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    _docFileB64 = e.target.result;
+    const thumb = document.getElementById('doc-preview-thumb');
+    if (file.type.startsWith('image/')) { thumb.src = _docFileB64; thumb.style.display = 'block'; }
+    else { thumb.style.display = 'none'; }
+  };
+  reader.readAsDataURL(file);
+}
+
+// Drag-over styling for drop zone
+const dz = document.getElementById('doc-dz');
+if (dz) {
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      const inp = document.getElementById('doc-file-in');
+      // feed to previewFile via DataTransfer
+      const dt = new DataTransfer(); dt.items.add(file);
+      inp.files = dt.files;
+      previewFile(inp);
+    }
+  });
+}
+
+function saveDoc() {
+  const label = document.getElementById('doc-label-in').value.trim() || 'Booking';
+  const link  = document.getElementById('doc-link-in').value.trim();
+  const doc = { id:uid(), label, link: link||null, image: _docFileB64||null };
+
+  const { type, targetId } = _docCtx;
+  let arr;
+  if      (type==='flight') arr = findFlight(targetId)?.docs;
+  else if (type==='sbRow')  arr = findSbRow(targetId)?.docs;
+  else if (type==='slot')   arr = findSlot(targetId)?.docs;
+  if (!arr) { closeDocModal(); return; }
+  arr.push(doc);
+
+  closeDocModal(); markUnsaved(); saveState(); renderAll();
+}
+
+function closeDocModal() {
+  document.getElementById('doc-modal').classList.remove('open');
+  _docCtx = null; _docFileB64 = null;
+}
+
+function removeDoc(type, targetId, idx) {
+  if(!editMode)return;
+  let arr;
+  if      (type==='flight') arr=findFlight(targetId)?.docs;
+  else if (type==='sbRow')  arr=findSbRow(targetId)?.docs;
+  else if (type==='slot')   arr=findSlot(targetId)?.docs;
+  if(!arr)return;
+  arr.splice(idx,1);
+  saveState(); renderAll();
+}
+
+function viewDoc(type, targetId, idx) {
+  let arr;
+  if      (type==='flight') arr=findFlight(targetId)?.docs;
+  else if (type==='sbRow')  arr=findSbRow(targetId)?.docs;
+  else if (type==='slot')   arr=findSlot(targetId)?.docs;
+  if(!arr)return;
+  const doc = arr[idx]; if(!doc)return;
+  document.getElementById('dv-title').textContent = doc.label;
+  const img = document.getElementById('doc-preview-img');
+  const lnk = document.getElementById('doc-preview-link');
+  if (doc.image) { img.src = doc.image; img.style.display = 'block'; } else { img.style.display = 'none'; }
+  if (doc.link)  { lnk.href = doc.link; lnk.style.display = 'inline-flex'; } else { lnk.style.display = 'none'; }
+  document.getElementById('doc-preview-modal').classList.add('open');
+}
+function closeDocViewer() { document.getElementById('doc-preview-modal').classList.remove('open'); }
+
+/* ════════════════════════════════════
+   TAGS
+════════════════════════════════════ */
+function openTagModal(ci,di,si,ti) {
+  if(!editMode)return;
+  _tagCtx={ci,di,si,ti};
+  const t=state.cities[ci].days[di].slots[si].tags[ti];
+  document.getElementById('tm-text').value=t.text;
+  document.getElementById('tm-type').value=t.type;
+  document.getElementById('tag-modal').classList.add('open');
+}
+function addTagTo(slotId) {
+  const ctx=findSlotCtx(slotId); if(!ctx)return;
+  const slot=ctx.slot;
+  slot.tags.push({type:'tip',text:'New tag'});
+  const ti=slot.tags.length-1;
+  markUnsaved(); renderCities();
+  setTimeout(()=>openTagModal(ctx.ci,ctx.di,ctx.si,ti),50);
+}
+function saveTag() {
+  if(!_tagCtx)return;
+  const {ci,di,si,ti}=_tagCtx;
+  state.cities[ci].days[di].slots[si].tags[ti].text=document.getElementById('tm-text').value;
+  state.cities[ci].days[di].slots[si].tags[ti].type=document.getElementById('tm-type').value;
+  closeTagModal(); markUnsaved(); renderCities();
+}
+function deleteTag() {
+  if(!_tagCtx)return;
+  const {ci,di,si,ti}=_tagCtx;
+  state.cities[ci].days[di].slots[si].tags.splice(ti,1);
+  closeTagModal(); markUnsaved(); renderCities();
+}
+function closeTagModal() { document.getElementById('tag-modal').classList.remove('open'); _tagCtx=null; }
+
+// Close modals on overlay click
+['doc-modal','doc-preview-modal','tag-modal'].forEach(id => {
+  document.getElementById(id).addEventListener('click', e => { if(e.target.id===id) { closeDocModal(); closeDocViewer(); closeTagModal(); } });
+});
+
+/* ════════════════════════════════════
+   DAY ACCORDION
+════════════════════════════════════ */
+function toggleDay(el) {
+  if(editMode && window.getSelection().toString()) return;
+  el.classList.toggle('open');
+}
+
+/* ════════════════════════════════════
+   EXPORT HTML
+════════════════════════════════════ */
+function exportHTML() {
+  saveState();
+  // Inject current state into a fresh copy of this page
+  const html = document.documentElement.outerHTML;
+  // Patch the DEFAULT constant to contain current state
+  const patched = html.replace(
+    /const DEFAULT = \{[\s\S]*?\};\s*\/\* ════/,
+    `const DEFAULT = ${JSON.stringify(state)};\n/* ════`
+  );
+  const blob = new Blob(['<!DOCTYPE html>\n'+patched], {type:'text/html'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'europe-2026-itinerary.html'; a.click();
+}
+
+/* ════════════════════════════════════
+   AUTO-SAVE on contenteditable blur
+════════════════════════════════════ */
+document.addEventListener('focusout', e => {
+  if(editMode && e.target.isContentEditable) { saveState(); }
+});
+
+/* ════════════════════════════════════
+   INTERSECTION OBSERVER
+════════════════════════════════════ */
+const obsv = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold:0.05 });
+
+/* ════════════════════════════════════
+   SHOW ADD-TAG + ADD-DOC BTNS IN EDIT MODE
+════════════════════════════════════ */
+function applyEditBtns() {
+  document.querySelectorAll('[id^="addtag-"],[id^="adddoc-"]').forEach(el => {
+    el.style.display = editMode ? 'inline-block' : 'none';
+  });
+}
+
+/* ════════════════════════════════════
+   INIT
+════════════════════════════════════ */
+loadState();
+renderAll();
+updateSaveIndicator();
+
+// After render, show edit-mode buttons
+const _origToggle = toggleEdit;
+window.toggleEdit = function() {
+  _origToggle();
+  applyEditBtns();
+};
+</script>
+</body>
+</html>
